@@ -80,7 +80,7 @@ if [ -n "${NOTARY_KEYCHAIN_PROFILE:-}" ] || [ -n "${NOTARY_APPLE_ID:-}" ]; then
     xcrun stapler validate "${DMG}"
 elif [ -z "${DEVELOPER_ID_APPLICATION:-}" ]; then
     echo "    not notarised: Gatekeeper will refuse this on first launch."
-    echo "    See the Distribution section of docs/TECHNICAL.md."
+    echo "    See the Distribution section of TECHNICAL.md."
 fi
 
 step "Verifying"

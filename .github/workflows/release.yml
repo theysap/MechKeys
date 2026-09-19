@@ -15,7 +15,7 @@ jobs:
 
     # Signing and notarisation happen only if these are set. With none of them
     # the image is still built and published, ad-hoc signed — which Gatekeeper
-    # refuses on first launch. See docs/TECHNICAL.md.
+    # refuses on first launch. See TECHNICAL.md.
     #
     # They live at job level so the steps below can test them: the `secrets`
     # context cannot be read from a step's `if`, but `env` can.

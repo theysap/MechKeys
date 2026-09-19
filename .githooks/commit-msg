@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# Commit subjects are a version: v0.1.0, v1.0.0, and so on.
+#
+# The subject line carries the version this commit brings the project to, and
+# the body explains what changed. Merge and revert commits are left alone,
+# since git writes those itself.
+
+set -euo pipefail
+
+MESSAGE_FILE="$1"
+SUBJECT=$(head -1 "${MESSAGE_FILE}")
+
+case "${SUBJECT}" in
+    Merge*|Revert*|fixup!*|squash!*) exit 0 ;;
+esac
+
+if ! echo "${SUBJECT}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+    echo $'\033[0;31m'"✗ Commit subject must be a version, for example v0.1.0"$'\033[0m'
+    echo "  Got: ${SUBJECT}"
+    echo
+    echo "  The subject is the version this commit brings the project to."
+    echo "  Put the explanation in the body, separated by a blank line."
+    exit 1
+fi

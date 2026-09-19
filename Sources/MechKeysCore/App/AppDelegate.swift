@@ -88,14 +88,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         controller.startUp()
 
-        // Opens a window straight away, so the interface can be looked at and
-        // captured without clicking through the menu bar. Used by the QA pass.
+        // Open a window straight away, so the interface can be looked at and
+        // captured without clicking through the menu bar. Capturing a menu bar
+        // popover otherwise needs screen-recording permission, which makes it
+        // awkward to inspect any other way. Used by the QA pass and to render
+        // the images in the README.
         if CommandLine.arguments.contains("--configure") {
             showConfiguration()
             return
         }
         if CommandLine.arguments.contains("--onboarding") {
             showOnboarding()
+            return
+        }
+        if CommandLine.arguments.contains("--popover") {
+            showPopoverPreview()
             return
         }
 
@@ -125,6 +132,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             content: ConfigurationView(controller: controller) { [weak self] in
                 self?.windows.close()
             }
+        )
+    }
+
+    /// The menu bar popover, in an ordinary window, for capture and QA.
+    public func showPopoverPreview() {
+        windows.show(
+            title: "MechKeys",
+            takesFocus: true,
+            content: MenuBarView(controller: controller).padding(.vertical, 4)
         )
     }
 

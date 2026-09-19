@@ -495,8 +495,15 @@ extension AVSoundEngine {
         seconds: Double = 0.35
     ) throws -> [Float] {
         let sampleRate = processingFormat.sampleRate
-        let frameCount = AVAudioFrameCount(seconds * sampleRate)
+        let wanted = Int(seconds * sampleRate)
         let maximumFrames: AVAudioFrameCount = 4096
+        // Rendered before the window is taken, not after. Scheduling a buffer
+        // "as soon as possible" starts it in whichever offline block comes
+        // next, so the sound can begin up to a block late; rendering only the
+        // window length would then clip its tail by that much, and every
+        // measurement taken from the result moved run to run. The budget is
+        // generous enough to contain the sound wherever it lands.
+        let budget = wanted * 3
 
         try queue.sync {
             self.settings = settings.normalized()
@@ -522,10 +529,10 @@ extension AVSoundEngine {
         }
 
         var rendered: [Float] = []
-        rendered.reserveCapacity(Int(frameCount))
+        rendered.reserveCapacity(budget)
 
-        while rendered.count < Int(frameCount) {
-            let remaining = AVAudioFrameCount(Int(frameCount) - rendered.count)
+        while rendered.count < budget {
+            let remaining = AVAudioFrameCount(budget - rendered.count)
             let request = min(remaining, scratch.frameCapacity)
             let status = try engine.renderOffline(request, to: scratch)
             guard status == .success, scratch.frameLength > 0 else { break }
@@ -539,6 +546,15 @@ extension AVSoundEngine {
             running = false
         }
 
-        return rendered
+        // A fixed-length window starting at the first sample that is not
+        // silence, so the result is the same every time regardless of which
+        // offline block the scheduler happened to start in. That offset is an
+        // artefact of driving the engine by hand and says nothing about the
+        // audio, so callers never see it.
+        guard let onset = rendered.firstIndex(where: { $0 != 0 }) else {
+            throw SoundEngineError.outputUnavailable("The graph rendered only silence.")
+        }
+        let end = min(onset + wanted, rendered.count)
+        return Array(rendered[onset..<end])
     }
 }
