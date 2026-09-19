@@ -2,9 +2,8 @@ import SwiftUI
 
 /// The menu bar icon.
 ///
-/// Deliberately plain: an SF Symbol with a filled and an outlined state, which
-/// is the convention every other menu bar utility follows. Anything more
-/// elaborate reads as noise at 16 points.
+/// The app icon's own mark — a keycap with two sound arcs — outlined when
+/// MechKeys is off and filled when it is listening. See `MenuBarIconImage`.
 public struct MenuBarIcon: View {
     let isActive: Bool
     let showsState: Bool
@@ -15,7 +14,7 @@ public struct MenuBarIcon: View {
     }
 
     public var body: some View {
-        Image(systemName: (isActive && showsState) ? "keyboard.fill" : "keyboard")
+        Image(nsImage: MenuBarIconImage.image(isActive: isActive && showsState))
             .accessibilityLabel(isActive ? "MechKeys, on" : "MechKeys, off")
     }
 }
@@ -120,9 +119,13 @@ public struct MenuBarView: View {
 
             Spacer()
 
-            Text(controller.isListening ? "ON" : "OFF")
+            // Follows the switch beside it, not whether the tap is actually
+            // running: a toggle drawn in the on position next to the word OFF
+            // reads as a contradiction. When it is on but not listening, the
+            // banner above says why.
+            Text(store.settings.isEnabled ? "ON" : "OFF")
                 .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(controller.isListening ? .secondary : .tertiary)
                 .accessibilityHidden(true)
 
             Toggle("", isOn: enabledBinding)
@@ -181,24 +184,38 @@ public struct MenuBarView: View {
                     .accessibilityLabel("Launch at login")
             }
 
-            Button {
-                controller.requestKeyboardAccess()
-            } label: {
-                HStack {
-                    Text("Keyboard Access")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    StatusBadge(
-                        level: permissions.isTrusted ? .good : .warning,
-                        text: permissions.isTrusted ? "Granted" : "Required"
-                    )
+            HStack(spacing: 6) {
+                Button {
+                    controller.requestKeyboardAccess()
+                } label: {
+                    HStack {
+                        Text("Keyboard Access")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        StatusBadge(
+                            level: permissions.isTrusted ? .good : .warning,
+                            text: permissions.isTrusted ? "Granted" : "Required"
+                        )
+                    }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityLabel("Keyboard access status")
+                .accessibilityValue(permissions.isTrusted ? "Granted" : "Required")
+
+                // The trust call goes stale; this one actually tries to create
+                // a tap. See PermissionManager.verify().
+                Button {
+                    controller.verifyKeyboardAccess()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(.borderless)
+                .help("Check again")
+                .accessibilityLabel("Check keyboard access again")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Keyboard access status")
-            .accessibilityValue(permissions.isTrusted ? "Granted" : "Required")
 
             Divider()
 

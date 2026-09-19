@@ -57,6 +57,48 @@ public final class PermissionManager {
         AXIsProcessTrustedWithOptions([promptOptionKey: false] as CFDictionary)
     }
 
+    /// The result of the last deep check, for the UI to report.
+    public enum VerifyResult: Equatable, Sendable {
+        case granted
+        /// A tap can be created even though the trust call says otherwise, or
+        /// the other way round. Either way it works, and the stale answer has
+        /// been corrected.
+        case grantedAfterDisagreement
+        case denied
+    }
+
+    public private(set) var lastVerification: VerifyResult?
+
+    /// Checks by actually creating an event tap, not by asking TCC.
+    ///
+    /// Wired to the "Check Again" button, because the cheap trust call is the
+    /// one that goes stale: it can report no permission for a process that
+    /// would in fact be allowed to listen, and the only other way out of that
+    /// state is relaunching the app.
+    @discardableResult
+    public func verify() -> VerifyResult {
+        let trusted = Self.currentStatus()
+        let canListen = KeyboardMonitor.canCreateTap()
+
+        let result: VerifyResult
+        if canListen {
+            result = trusted ? .granted : .grantedAfterDisagreement
+        } else {
+            result = .denied
+        }
+
+        lastVerification = result
+        // The tap test wins: it is the capability the app actually needs.
+        if canListen != isTrusted { isTrusted = canListen }
+        if canListen {
+            pollTask?.cancel()
+            pollTask = nil
+        } else if pollTask == nil {
+            startPolling()
+        }
+        return result
+    }
+
     @discardableResult
     public func refresh() -> Bool {
         let status = Self.currentStatus()

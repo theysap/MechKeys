@@ -61,6 +61,37 @@ public final class KeyboardMonitor: @unchecked Sendable {
         lock.unlock()
     }
 
+    // MARK: - Verifying access
+
+    /// Creates a tap, checks it was allowed, and tears it straight down again.
+    ///
+    /// This is the authoritative answer to "can MechKeys actually listen?",
+    /// and `AXIsProcessTrusted` is only an approximation of it. The two
+    /// disagree in practice: TCC caches its decision per process, so after the
+    /// switch is turned on in System Settings the trust call can keep
+    /// returning false for a while even though a tap would now be created
+    /// perfectly happily — which shows up as an app insisting it has no
+    /// permission while sitting in the list with its checkbox ticked.
+    ///
+    /// Cheap enough to run from a button: the tap is never enabled and never
+    /// added to a run loop.
+    public static func canCreateTap() -> Bool {
+        let mask = (1 << CGEventType.keyDown.rawValue)
+        guard
+            let tap = CGEvent.tapCreate(
+                tap: .cgSessionEventTap,
+                place: .headInsertEventTap,
+                options: .listenOnly,
+                eventsOfInterest: CGEventMask(mask),
+                callback: { _, _, event, _ in Unmanaged.passUnretained(event) },
+                userInfo: nil
+            )
+        else { return false }
+
+        CGEvent.tapEnable(tap: tap, enable: false)
+        return true
+    }
+
     // MARK: - Lifecycle
 
     /// Starts the tap. Returns false if Accessibility permission is missing,

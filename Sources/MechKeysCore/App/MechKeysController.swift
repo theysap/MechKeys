@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 
@@ -162,6 +163,33 @@ public final class MechKeysController {
 
     public func completeOnboarding() {
         settingsStore.settings.hasCompletedOnboarding = true
+    }
+
+    /// Re-checks keyboard access by trying to create a tap, and starts
+    /// listening immediately if it turns out to work.
+    @discardableResult
+    public func verifyKeyboardAccess() -> PermissionManager.VerifyResult {
+        let result = permissions.verify()
+        apply(settingsStore.settings)
+        return result
+    }
+
+    /// Quits and relaunches.
+    ///
+    /// The last resort when macOS has granted access but this process still
+    /// cannot get a tap: TCC's answer is cached per process, and a fresh one
+    /// picks up the new decision.
+    public func relaunch() {
+        guard let bundleURL = Bundle.main.bundleURL as URL?,
+            Bundle.main.bundleIdentifier != nil
+        else { return }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        shutDown()
+        NSWorkspace.shared.openApplication(at: bundleURL, configuration: configuration) { _, _ in
+            Task { @MainActor in NSApp.terminate(nil) }
+        }
     }
 
     public func requestKeyboardAccess() {

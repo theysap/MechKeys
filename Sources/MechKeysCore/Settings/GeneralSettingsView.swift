@@ -28,6 +28,11 @@ struct GeneralSettingsView: View {
                             level: permissions.isTrusted ? .good : .warning,
                             text: permissions.isTrusted ? "Granted" : "Required"
                         )
+                        Button("Check Again") { controller.verifyKeyboardAccess() }
+                            .controlSize(.small)
+                            .accessibilityHint(
+                                "Verifies access by creating a real event tap, which is more reliable than the system's own answer."
+                            )
                         if !permissions.isTrusted {
                             Button("Open Settings…") { controller.requestKeyboardAccess() }
                                 .controlSize(.small)
@@ -36,6 +41,10 @@ struct GeneralSettingsView: View {
                 }
                 .accessibilityLabel("Keyboard access status")
                 .accessibilityValue(permissions.isTrusted ? "Granted" : "Required")
+
+                if let verification = permissions.lastVerification {
+                    verificationNote(verification)
+                }
 
                 LabeledContent("Audio Output") {
                     if case .failed = controller.engineStatus {
@@ -103,6 +112,52 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// What the deep check found, and the way out if macOS is being stubborn.
+    @ViewBuilder
+    private func verificationNote(_ result: PermissionManager.VerifyResult) -> some View {
+        switch result {
+        case .granted:
+            Label(
+                "Verified — MechKeys can listen to the keyboard.", systemImage: "checkmark.circle"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+        case .grantedAfterDisagreement:
+            Label(
+                "Verified. macOS was reporting no permission, but a real event tap succeeded, so MechKeys is working.",
+                systemImage: "checkmark.circle"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+        case .denied:
+            VStack(alignment: .leading, spacing: 6) {
+                Label(
+                    "MechKeys still cannot create an event tap.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                Text(
+                    """
+                    If MechKeys is already switched on in System Settings, macOS \
+                    has cached its answer for this process. Remove MechKeys from \
+                    the Accessibility list, add it again, then relaunch.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Button("Relaunch MechKeys") { controller.relaunch() }
+                    .controlSize(.small)
+                    .accessibilityHint("Quits and reopens MechKeys so macOS re-evaluates access.")
+            }
+        }
     }
 
     private var enabledBinding: Binding<Bool> {
