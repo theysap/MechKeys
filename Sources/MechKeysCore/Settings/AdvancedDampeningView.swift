@@ -25,7 +25,8 @@ struct AdvancedDampeningView: View {
                     .toggleStyle(.switch)
                     .controlSize(.mini)
                     .font(.system(size: 11))
-                    .accessibilityHint("Detaches the dampening slider and uses the values below directly.")
+                    .accessibilityHint(
+                        "Detaches the dampening slider and uses the values below directly.")
 
                 Group {
                     LabeledSlider(
@@ -33,9 +34,15 @@ struct AdvancedDampeningView: View {
                         leadingLabel: "Dark",
                         trailingLabel: "Open",
                         value: store.advancedBinding(\.highFrequencyCutoff),
-                        range: Double(DampeningCurve.cutoffRange.lowerBound)...Double(DampeningCurve.cutoffRange.upperBound),
+                        range: Double(
+                            DampeningCurve.cutoffRange.lowerBound)...Double(
+                                DampeningCurve.cutoffRange.upperBound),
                         accessibilityHint: "Low-pass corner frequency.",
-                        format: { $0 >= 1000 ? String(format: "%.1f kHz", $0 / 1000) : String(format: "%.0f Hz", $0) }
+                        format: {
+                            $0 >= 1000
+                                ? String(format: "%.1f kHz", $0 / 1000)
+                                : String(format: "%.0f Hz", $0)
+                        }
                     )
 
                     LabeledSlider(
@@ -43,7 +50,9 @@ struct AdvancedDampeningView: View {
                         leadingLabel: "Cut",
                         trailingLabel: "Boost",
                         value: store.advancedBinding(\.highFrequencyGain),
-                        range: Double(DampeningCurve.shelfGainRange.lowerBound)...Double(DampeningCurve.shelfGainRange.upperBound),
+                        range: Double(
+                            DampeningCurve.shelfGainRange.lowerBound)...Double(
+                                DampeningCurve.shelfGainRange.upperBound),
                         accessibilityHint: "High shelf gain above 3.2 kilohertz.",
                         format: { String(format: "%.1f dB", $0) }
                     )
@@ -53,7 +62,8 @@ struct AdvancedDampeningView: View {
                         leadingLabel: "Sharp",
                         trailingLabel: "Soft",
                         value: store.advancedBinding(\.transientReduction),
-                        accessibilityHint: "How much of the initial attack spike is smoothed. Does not delay the sound."
+                        accessibilityHint:
+                            "How much of the initial attack spike is smoothed. Does not delay the sound."
                     )
 
                     LabeledSlider(
@@ -77,7 +87,9 @@ struct AdvancedDampeningView: View {
                         leadingLabel: "Thin",
                         trailingLabel: "Full",
                         value: store.advancedBinding(\.lowMidGain),
-                        range: Double(DampeningCurve.bodyGainRange.lowerBound)...Double(DampeningCurve.bodyGainRange.upperBound),
+                        range: Double(
+                            DampeningCurve.bodyGainRange.lowerBound)...Double(
+                                DampeningCurve.bodyGainRange.upperBound),
                         accessibilityHint: "Low shelf gain around the profile's body frequency.",
                         format: { String(format: "%.1f dB", $0) }
                     )
@@ -93,7 +105,8 @@ struct AdvancedDampeningView: View {
                     trailingLabel: "+12 dB",
                     value: $store.settings.makeupGainOffsetDB,
                     range: AppSettings.makeupOffsetRange,
-                    accessibilityHint: "Extra gain after the dampening chain, on top of automatic loudness compensation.",
+                    accessibilityHint:
+                        "Extra gain after the dampening chain, on top of automatic loudness compensation.",
                     format: { String(format: "%+.1f dB", $0) }
                 )
 
@@ -104,7 +117,9 @@ struct AdvancedDampeningView: View {
                     }
                     .controlSize(.small)
                     .disabled(!store.settings.usesAdvancedDampening)
-                    .accessibilityHint("Copies the values the dampening slider would produce at its current position.")
+                    .accessibilityHint(
+                        "Copies the values the dampening slider would produce at its current position."
+                    )
 
                     Spacer()
 

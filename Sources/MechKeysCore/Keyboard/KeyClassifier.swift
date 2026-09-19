@@ -12,7 +12,10 @@ public struct KeyEvent: Equatable, Sendable {
     public let isRepeat: Bool
     public let timestamp: TimeInterval
 
-    public init(category: KeyCategory, isRepeat: Bool, timestamp: TimeInterval = Date.timeIntervalSinceReferenceDate) {
+    public init(
+        category: KeyCategory, isRepeat: Bool,
+        timestamp: TimeInterval = Date.timeIntervalSinceReferenceDate
+    ) {
         self.category = category
         self.isRepeat = isRepeat
         self.timestamp = timestamp
@@ -37,16 +40,16 @@ public enum KeyClassifier {
 
     /// Keys that only ever appear as `flagsChanged` events.
     static let modifierKeyCodes: Set<CGKeyCode> = [
-        54, // right command
-        55, // command
-        56, // shift
-        57, // caps lock
-        58, // option
-        59, // control
-        60, // right shift
-        61, // right option
-        62, // right control
-        63, // fn
+        54,  // right command
+        55,  // command
+        56,  // shift
+        57,  // caps lock
+        58,  // option
+        59,  // control
+        60,  // right shift
+        61,  // right option
+        62,  // right control
+        63,  // fn
     ]
 
     public static func category(for keyCode: CGKeyCode) -> KeyCategory {

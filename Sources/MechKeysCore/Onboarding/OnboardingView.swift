@@ -96,9 +96,11 @@ public struct OnboardingView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
-            Text("Your keystrokes are never recorded, stored or transmitted. MechKeys only learns that *a* key was pressed and how large it was.")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+            Text(
+                "Your keystrokes are never recorded, stored or transmitted. MechKeys only learns that *a* key was pressed and how large it was."
+            )
+            .font(.system(size: 11))
+            .foregroundStyle(.tertiary)
 
             VStack(spacing: 8) {
                 Button("Open Accessibility Settings") {
@@ -132,11 +134,13 @@ public struct OnboardingView: View {
             Text(permissions.isTrusted ? "You're ready." : "Almost there.")
                 .font(.system(size: 21, weight: .semibold))
 
-            Text(permissions.isTrusted
-                 ? "Try typing anywhere. MechKeys lives in the menu bar — click the keyboard icon to change the switch or the dampening."
-                 : "MechKeys will stay quiet until you grant Accessibility permission. You can do it any time from the menu bar.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+            Text(
+                permissions.isTrusted
+                    ? "Try typing anywhere. MechKeys lives in the menu bar — click the keyboard icon to change the switch or the dampening."
+                    : "MechKeys will stay quiet until you grant Accessibility permission. You can do it any time from the menu bar."
+            )
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
 
             HStack(spacing: 10) {
                 Button {

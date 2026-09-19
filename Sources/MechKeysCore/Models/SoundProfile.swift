@@ -56,20 +56,25 @@ public enum SoundProfile: String, CaseIterable, Codable, Identifiable, Hashable,
     public var voicing: ProfileVoicing {
         switch self {
         case .red:
-            return ProfileVoicing(resonanceHz: 3400, resonanceQ: 1.1, bodyHz: 205,
-                                  brightness: 0.48, transientSensitivity: 0.85)
+            return ProfileVoicing(
+                resonanceHz: 3400, resonanceQ: 1.1, bodyHz: 205,
+                brightness: 0.48, transientSensitivity: 0.85)
         case .brown:
-            return ProfileVoicing(resonanceHz: 4100, resonanceQ: 1.3, bodyHz: 198,
-                                  brightness: 0.60, transientSensitivity: 0.95)
+            return ProfileVoicing(
+                resonanceHz: 4100, resonanceQ: 1.3, bodyHz: 198,
+                brightness: 0.60, transientSensitivity: 0.95)
         case .blue:
-            return ProfileVoicing(resonanceHz: 5400, resonanceQ: 1.8, bodyHz: 232,
-                                  brightness: 0.92, transientSensitivity: 1.00)
+            return ProfileVoicing(
+                resonanceHz: 5400, resonanceQ: 1.8, bodyHz: 232,
+                brightness: 0.92, transientSensitivity: 1.00)
         case .black:
-            return ProfileVoicing(resonanceHz: 2100, resonanceQ: 0.9, bodyHz: 148,
-                                  brightness: 0.32, transientSensitivity: 0.70)
+            return ProfileVoicing(
+                resonanceHz: 2100, resonanceQ: 0.9, bodyHz: 148,
+                brightness: 0.32, transientSensitivity: 0.70)
         case .yellow:
-            return ProfileVoicing(resonanceHz: 2700, resonanceQ: 1.0, bodyHz: 172,
-                                  brightness: 0.41, transientSensitivity: 0.80)
+            return ProfileVoicing(
+                resonanceHz: 2700, resonanceQ: 1.0, bodyHz: 172,
+                brightness: 0.41, transientSensitivity: 0.80)
         }
     }
 }
@@ -87,8 +92,10 @@ public struct ProfileVoicing: Equatable, Hashable, Sendable {
     /// How strongly transient shaping bites on this profile, 0...1.
     public let transientSensitivity: Float
 
-    public init(resonanceHz: Float, resonanceQ: Float, bodyHz: Float,
-                brightness: Float, transientSensitivity: Float) {
+    public init(
+        resonanceHz: Float, resonanceQ: Float, bodyHz: Float,
+        brightness: Float, transientSensitivity: Float
+    ) {
         self.resonanceHz = resonanceHz
         self.resonanceQ = resonanceQ
         self.bodyHz = bodyHz

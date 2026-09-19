@@ -110,7 +110,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// The app has no windows of its own most of the time; clicking the Dock
     /// icon (when one is shown) or re-opening should bring up configuration.
-    public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+    public func applicationShouldHandleReopen(
+        _ sender: NSApplication, hasVisibleWindows: Bool
+    ) -> Bool {
         showConfiguration()
         return true
     }

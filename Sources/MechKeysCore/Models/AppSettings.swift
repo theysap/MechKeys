@@ -138,22 +138,24 @@ public struct AppSettings: Codable, Equatable, Sendable {
         Dictionary(uniqueKeysWithValues: KeyCategory.allCases.map { ($0, KeyCategorySettings()) })
     }
 
-    public init(isEnabled: Bool,
-                profile: SoundProfile,
-                dampening: Double,
-                volume: Double,
-                usesAdvancedDampening: Bool,
-                advancedDampening: DampeningParameters,
-                makeupGainOffsetDB: Double,
-                playModifierSounds: Bool,
-                categorySettings: [KeyCategory: KeyCategorySettings],
-                variationAmount: Double,
-                pitchVariationEnabled: Bool,
-                keyRepeatMode: KeyRepeatMode,
-                minimumKeyInterval: Double,
-                maximumVoices: Int,
-                hasCompletedOnboarding: Bool,
-                showsMenuBarStateInIcon: Bool) {
+    public init(
+        isEnabled: Bool,
+        profile: SoundProfile,
+        dampening: Double,
+        volume: Double,
+        usesAdvancedDampening: Bool,
+        advancedDampening: DampeningParameters,
+        makeupGainOffsetDB: Double,
+        playModifierSounds: Bool,
+        categorySettings: [KeyCategory: KeyCategorySettings],
+        variationAmount: Double,
+        pitchVariationEnabled: Bool,
+        keyRepeatMode: KeyRepeatMode,
+        minimumKeyInterval: Double,
+        maximumVoices: Int,
+        hasCompletedOnboarding: Bool,
+        showsMenuBarStateInIcon: Bool
+    ) {
         self.isEnabled = isEnabled
         self.profile = profile
         self.dampening = dampening
@@ -179,7 +181,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let fallback = AppSettings.default
         func value<T: Decodable>(_ key: CodingKeys, _ defaultValue: T) -> T {
-            (try? container.decodeIfPresent(T.self, forKey: key)) .flatMap { $0 } ?? defaultValue
+            (try? container.decodeIfPresent(T.self, forKey: key)).flatMap { $0 } ?? defaultValue
         }
         isEnabled = value(.isEnabled, fallback.isEnabled)
         profile = value(.profile, fallback.profile)
@@ -208,8 +210,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         copy.volume = volume.clamped(to: Self.volumeRange)
         copy.variationAmount = variationAmount.clamped(to: Self.variationRange)
         copy.minimumKeyInterval = minimumKeyInterval.clamped(to: Self.minimumKeyIntervalRange)
-        copy.maximumVoices = Swift.min(Swift.max(maximumVoices, Self.voiceCountRange.lowerBound),
-                                       Self.voiceCountRange.upperBound)
+        copy.maximumVoices = Swift.min(
+            Swift.max(maximumVoices, Self.voiceCountRange.lowerBound),
+            Self.voiceCountRange.upperBound)
         copy.makeupGainOffsetDB = makeupGainOffsetDB.clamped(to: Self.makeupOffsetRange)
         copy.advancedDampening = advancedDampening.clamped()
         var categories = categorySettings
@@ -227,14 +230,16 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// The DSP parameters actually in force: either the curve, or the manual
     /// override when the user has taken control.
     public var effectiveDampening: DampeningParameters {
-        usesAdvancedDampening ? advancedDampening.clamped()
-                              : DampeningCurve.parameters(for: Float(dampening))
+        usesAdvancedDampening
+            ? advancedDampening.clamped()
+            : DampeningCurve.parameters(for: Float(dampening))
     }
 
     /// Output trim in dB: loudness compensation for the dampening chain, plus
     /// the user's own offset.
     public var effectiveMakeupGainDB: Float {
-        let automatic = usesAdvancedDampening ? 0 : DampeningCurve.makeupGainDB(for: Float(dampening))
+        let automatic =
+            usesAdvancedDampening ? 0 : DampeningCurve.makeupGainDB(for: Float(dampening))
         return automatic + Float(makeupGainOffsetDB)
     }
 

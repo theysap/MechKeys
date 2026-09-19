@@ -106,7 +106,8 @@ public struct ConfigurationView: View {
             .buttonStyle(.glassProminent)
             .keyboardShortcut(.defaultAction)
             .accessibilityHint(
-                "Saves the settings and closes this window. MechKeys keeps running in the menu bar.")
+                "Saves the settings and closes this window. MechKeys keeps running in the menu bar."
+            )
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
@@ -125,7 +126,8 @@ extension SettingsStore {
     }
 
     /// `Slider` wants a `Double`; the DSP model stores `Float`.
-    func advancedBinding(_ keyPath: WritableKeyPath<DampeningParameters, Float>) -> Binding<Double> {
+    func advancedBinding(_ keyPath: WritableKeyPath<DampeningParameters, Float>) -> Binding<Double>
+    {
         Binding(
             get: { Double(self.settings.advancedDampening[keyPath: keyPath]) },
             set: { self.settings.advancedDampening[keyPath: keyPath] = Float($0) }

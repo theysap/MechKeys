@@ -57,8 +57,10 @@ struct GeneralSettingsView: View {
                 Toggle("Launch at login", isOn: $store.launchAtLogin)
                     .accessibilityHint("Starts MechKeys automatically when you log in.")
 
-                Toggle("Show state in the menu bar icon", isOn: $store.settings.showsMenuBarStateInIcon)
-                    .accessibilityHint("Fills the menu bar icon while MechKeys is listening.")
+                Toggle(
+                    "Show state in the menu bar icon", isOn: $store.settings.showsMenuBarStateInIcon
+                )
+                .accessibilityHint("Fills the menu bar icon while MechKeys is listening.")
             } header: {
                 Text("Startup")
             } footer: {

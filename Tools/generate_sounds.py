@@ -25,10 +25,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
-import os
-import random
 import wave
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -342,6 +341,18 @@ def render_sample(profile: Profile, category: Category, seed: int, jitter: float
     return signal
 
 
+def _seed(base: int, *parts: object) -> int:
+    """
+    A stable per-sample seed.
+
+    Deliberately not Python's `hash()`: string hashing is salted per process,
+    so the generator produced a different library on every run and the
+    committed samples could not be checked against it.
+    """
+    digest = hashlib.sha256("\x00".join(str(part) for part in parts).encode()).digest()
+    return (int.from_bytes(digest[:4], "big") ^ base) % (2**31)
+
+
 def write_wav(path: Path, signal: np.ndarray) -> int:
     data = (signal * 32767.0).astype("<i2")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -379,7 +390,7 @@ def main() -> None:
         for category in CATEGORIES:
             names = []
             for variant in range(1, args.variants + 1):
-                seed = abs(hash((profile.name, category.name, variant))) % (2**31) ^ args.seed
+                seed = _seed(args.seed, profile.name, category.name, variant)
                 signal = render_sample(profile, category, seed)
                 filename = f"{category.name}_{variant:02d}.wav"
                 size = write_wav(out_root / profile.name / filename, signal)

@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    # MechKeys targets macOS 26, so the runner image needs an SDK at least that
+    # new. Pin this to a specific image if `macos-latest` moves backwards.
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcrun --show-sdk-version
+
+      - name: Check formatting
+        run: swift format lint --recursive --strict Sources Tests
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Test
+        run: ./Scripts/test.sh
+
+      # The bundled samples are committed so that a clone builds without Python.
+      # This checks they are exactly what the generator produces, so nobody can
+      # quietly hand-edit a .wav into the repository.
+      - name: Verify the sound library is reproducible
+        run: |
+          python3 -m pip install --quiet numpy
+          shasum -a 256 Resources/Sounds/*/*.wav | sort > /tmp/before.txt
+          python3 Tools/generate_sounds.py
+          shasum -a 256 Resources/Sounds/*/*.wav | sort > /tmp/after.txt
+          diff /tmp/before.txt /tmp/after.txt || {
+            echo "The committed samples do not match Tools/generate_sounds.py" >&2
+            exit 1
+          }
+
+      - name: Build application bundle
+        run: ./Scripts/build-app.sh
+
+      - name: Upload application
+        uses: actions/upload-artifact@v4
+        with:
+          name: MechKeys-app
+          path: dist/MechKeys.app
+          if-no-files-found: error

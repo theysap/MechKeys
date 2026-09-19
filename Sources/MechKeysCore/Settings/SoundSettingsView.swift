@@ -142,13 +142,16 @@ struct SoundSettingsView: View {
         case ..<0.12:
             return "Undampened. Full high-frequency energy, sharp transient, a long ring."
         case ..<0.37:
-            return "Lightly dampened. The transient is softened and the top end pulled back a little."
+            return
+                "Lightly dampened. The transient is softened and the top end pulled back a little."
         case ..<0.62:
-            return "Noticeably smoother. Reduced sharpness and resonance, a fuller and rounder sound."
+            return
+                "Noticeably smoother. Reduced sharpness and resonance, a fuller and rounder sound."
         case ..<0.87:
             return "Strongly softened. Highs substantially reduced, very little ring left."
         default:
-            return "Heavily dampened. Soft attack, filtered highs, minimal ringing — muffled and thuddy."
+            return
+                "Heavily dampened. Soft attack, filtered highs, minimal ringing — muffled and thuddy."
         }
     }
 }

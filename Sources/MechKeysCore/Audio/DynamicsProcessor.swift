@@ -1,5 +1,5 @@
-import AudioToolbox
 import AVFoundation
+import AudioToolbox
 import Foundation
 
 /// Apple's `AUDynamicsProcessor`, wrapped as an `AVAudioUnitEffect`.
@@ -46,7 +46,8 @@ public final class DynamicsProcessor: AVAudioUnitEffect, @unchecked Sendable {
 
     private func set(_ address: Address, _ value: Float) {
         guard let parameter = parameters[address.rawValue] else { return }
-        parameter.setValue(value.clamped(to: parameter.minValue...parameter.maxValue), originator: nil)
+        parameter.setValue(
+            value.clamped(to: parameter.minValue...parameter.maxValue), originator: nil)
     }
 
     /// Level above which compression begins, in dBFS.
@@ -73,11 +74,13 @@ public final class DynamicsProcessor: AVAudioUnitEffect, @unchecked Sendable {
     }
 
     /// Applies every parameter in one go.
-    public func configure(threshold: Float,
-                          headRoom: Float,
-                          attackTime: Float,
-                          releaseTime: Float,
-                          overallGain: Float) {
+    public func configure(
+        threshold: Float,
+        headRoom: Float,
+        attackTime: Float,
+        releaseTime: Float,
+        overallGain: Float
+    ) {
         self.threshold = threshold
         self.headRoom = headRoom
         self.attackTime = attackTime
@@ -130,6 +133,7 @@ public final class PeakLimiter: AVAudioUnitEffect, @unchecked Sendable {
 
     private func set(_ address: Address, _ value: Float) {
         guard let parameter = parameters[address.rawValue] else { return }
-        parameter.setValue(value.clamped(to: parameter.minValue...parameter.maxValue), originator: nil)
+        parameter.setValue(
+            value.clamped(to: parameter.minValue...parameter.maxValue), originator: nil)
     }
 }

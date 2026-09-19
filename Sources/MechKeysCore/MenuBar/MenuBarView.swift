@@ -35,9 +35,11 @@ public struct MenuBarView: View {
 
     private var permissions: PermissionManager { controller.permissions }
 
-    public init(controller: MechKeysController,
-                onConfigure: @escaping () -> Void = {},
-                onQuit: @escaping () -> Void = {}) {
+    public init(
+        controller: MechKeysController,
+        onConfigure: @escaping () -> Void = {},
+        onQuit: @escaping () -> Void = {}
+    ) {
         self.controller = controller
         self._store = Bindable(wrappedValue: controller.settingsStore)
         self.onConfigure = onConfigure
@@ -140,10 +142,12 @@ public struct MenuBarView: View {
     }
 
     @ViewBuilder
-    private func banner(_ message: String,
-                        symbol: String,
-                        tint: Color,
-                        action: (() -> Void)?) -> some View {
+    private func banner(
+        _ message: String,
+        symbol: String,
+        tint: Color,
+        action: (() -> Void)?
+    ) -> some View {
         let content = HStack(alignment: .top, spacing: 7) {
             Image(systemName: symbol).foregroundStyle(tint)
             Text(message)
@@ -203,9 +207,11 @@ public struct MenuBarView: View {
         }
     }
 
-    private func menuButton(_ title: String,
-                            shortcut: String?,
-                            action: @escaping () -> Void) -> some View {
+    private func menuButton(
+        _ title: String,
+        shortcut: String?,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             HStack {
                 Text(title).font(.system(size: 12))

@@ -22,12 +22,14 @@ public struct DampeningParameters: Equatable, Codable, Sendable {
     /// rather than merely quiet.
     public var lowMidGain: Float
 
-    public init(highFrequencyCutoff: Float,
-                highFrequencyGain: Float,
-                transientReduction: Float,
-                resonanceReduction: Float,
-                compressionAmount: Float,
-                lowMidGain: Float) {
+    public init(
+        highFrequencyCutoff: Float,
+        highFrequencyGain: Float,
+        transientReduction: Float,
+        resonanceReduction: Float,
+        compressionAmount: Float,
+        lowMidGain: Float
+    ) {
         self.highFrequencyCutoff = highFrequencyCutoff
         self.highFrequencyGain = highFrequencyGain
         self.transientReduction = transientReduction
@@ -101,10 +103,14 @@ public enum DampeningCurve {
 
         return DampeningParameters(
             highFrequencyCutoff: logLerp(sharp.highFrequencyCutoff, muted.highFrequencyCutoff, t),
-            highFrequencyGain: lerp(sharp.highFrequencyGain, muted.highFrequencyGain, t.eased(power: 1.15)),
-            transientReduction: lerp(sharp.transientReduction, muted.transientReduction, transientT),
-            resonanceReduction: lerp(sharp.resonanceReduction, muted.resonanceReduction, resonanceT),
-            compressionAmount: lerp(sharp.compressionAmount, muted.compressionAmount, t.eased(power: 1.25)),
+            highFrequencyGain: lerp(
+                sharp.highFrequencyGain, muted.highFrequencyGain, t.eased(power: 1.15)),
+            transientReduction: lerp(
+                sharp.transientReduction, muted.transientReduction, transientT),
+            resonanceReduction: lerp(
+                sharp.resonanceReduction, muted.resonanceReduction, resonanceT),
+            compressionAmount: lerp(
+                sharp.compressionAmount, muted.compressionAmount, t.eased(power: 1.25)),
             lowMidGain: lerp(sharp.lowMidGain, muted.lowMidGain, bodyT)
         ).clamped()
     }

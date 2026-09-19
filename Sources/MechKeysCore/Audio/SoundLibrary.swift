@@ -93,7 +93,8 @@ public final class SoundLibrary {
         let direct = rawSamples(profile: profile, category: category)
         if !direct.isEmpty { return direct }
         guard category != .standard else { return [] }
-        AppLog.library.warning("Falling back to standard samples for \(category.rawValue, privacy: .public)")
+        AppLog.library.warning(
+            "Falling back to standard samples for \(category.rawValue, privacy: .public)")
         return rawSamples(profile: profile, category: .standard)
     }
 
@@ -106,7 +107,8 @@ public final class SoundLibrary {
             return []
         }
 
-        let matches = entries
+        let matches =
+            entries
             .filter { $0.hasPrefix("\(category.rawValue)_") && $0.hasSuffix(".wav") }
             .sorted()
 
@@ -121,8 +123,9 @@ public final class SoundLibrary {
                 let file = try AVAudioFile(forReading: url)
                 let frameCount = AVAudioFrameCount(file.length)
                 guard frameCount > 0,
-                      let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
-                                                    frameCapacity: frameCount)
+                    let buffer = AVAudioPCMBuffer(
+                        pcmFormat: file.processingFormat,
+                        frameCapacity: frameCount)
                 else {
                     noteMissing(name)
                     return nil
@@ -133,7 +136,9 @@ public final class SoundLibrary {
             } catch {
                 // A corrupt or unreadable file costs us one variant, nothing more.
                 noteMissing(name)
-                AppLog.library.error("Could not read \(name, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                AppLog.library.error(
+                    "Could not read \(name, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
                 return nil
             }
         }

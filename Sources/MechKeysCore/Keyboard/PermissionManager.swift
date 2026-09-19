@@ -82,7 +82,8 @@ public final class PermissionManager {
 
     /// Deep-links to Privacy & Security → Accessibility.
     public func openSystemSettings() {
-        let urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        let urlString =
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
         if let url = URL(string: urlString) {
             NSWorkspace.shared.open(url)
         }

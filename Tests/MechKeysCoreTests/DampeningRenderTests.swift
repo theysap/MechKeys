@@ -1,5 +1,5 @@
-import Accelerate
 import AVFoundation
+import Accelerate
 import Foundation
 import Testing
 
@@ -11,9 +11,12 @@ import Testing
 /// dampening slider changes the *sound*, not the *level*. Everything is
 /// rendered through `AVAudioEngine`'s manual rendering mode, so no speaker,
 /// no output device and no audio hardware of any kind is involved.
-@Suite("Dampening, measured")
+/// Serialised: each test here builds a real `AVAudioEngine` graph, and several
+/// of them rendering at once contend for CPU enough to jitter the offline
+/// scheduling — which showed up as an onset measurement that passed alone and
+/// failed in a full parallel run.
+@Suite("Dampening, measured", .serialized)
 struct DampeningRenderTests {
-
 
     private static let sampleRate: Double = 48_000
 
@@ -62,7 +65,8 @@ struct DampeningRenderTests {
         }
 
         guard
-            let fft = vDSP.FFT(log2n: vDSP_Length(log2n), radix: .radix2, ofType: DSPSplitComplex.self)
+            let fft = vDSP.FFT(
+                log2n: vDSP_Length(log2n), radix: .radix2, ofType: DSPSplitComplex.self)
         else { return 0 }
 
         var real = [Float](repeating: 0, count: count / 2)
@@ -127,8 +131,9 @@ struct DampeningRenderTests {
 
         // The whole point of the control. A heavily dampened board has
         // markedly less of its energy up top.
-        #expect(mutedRatio < sharpRatio * 0.5,
-                "high-frequency ratio went \(sharpRatio) -> \(mutedRatio)")
+        #expect(
+            mutedRatio < sharpRatio * 0.5,
+            "high-frequency ratio went \(sharpRatio) -> \(mutedRatio)")
     }
 
     @Test("High-frequency content falls monotonically across the slider")
@@ -156,7 +161,8 @@ struct DampeningRenderTests {
         // slider are comparable in level. If full dampening were much quieter,
         // the control would be indistinguishable from the volume slider.
         let ratio = rms(muted) / rms(sharp)
-        #expect(ratio > 0.3, "fully dampened output is \(ratio)x the level — too quiet to be dampening")
+        #expect(
+            ratio > 0.3, "fully dampened output is \(ratio)x the level — too quiet to be dampening")
     }
 
     @Test("Dampening does not delay the sound")

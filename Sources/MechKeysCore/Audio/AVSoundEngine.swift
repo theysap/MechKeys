@@ -87,9 +87,10 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
             resonance = Int((parameters.resonanceReduction * 50).rounded())
             variation = Int((settings.variationAmount * 20).rounded())
             pitchVariation = settings.pitchVariationEnabled
-            categoryPitch = Dictionary(uniqueKeysWithValues: KeyCategory.allCases.map {
-                ($0, Int((settings.settings(for: $0).pitchSemitones * 10).rounded()))
-            })
+            categoryPitch = Dictionary(
+                uniqueKeysWithValues: KeyCategory.allCases.map {
+                    ($0, Int((settings.settings(for: $0).pitchSemitones * 10).rounded()))
+                })
         }
     }
 
@@ -115,7 +116,8 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
             let report = library.preload(profile: settings.profile)
             guard report.isUsable else {
                 let error = SoundEngineError.libraryUnavailable(
-                    report.rootPath.map { "Looked in \($0)." } ?? "No Sounds folder was found in the app bundle."
+                    report.rootPath.map { "Looked in \($0)." }
+                        ?? "No Sounds folder was found in the app bundle."
                 )
                 lastError = error
                 throw error
@@ -130,7 +132,8 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
             } catch {
                 let failure = SoundEngineError.outputUnavailable(error.localizedDescription)
                 lastError = failure
-                AppLog.audio.error("Engine start failed: \(error.localizedDescription, privacy: .public)")
+                AppLog.audio.error(
+                    "Engine start failed: \(error.localizedDescription, privacy: .public)")
                 throw failure
             }
 
@@ -168,7 +171,8 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
         players.removeAll()
         playerFreeAt.removeAll()
 
-        for node in [busMixer as AVAudioNode, equalizer, dynamics, limiter] where node.engine != nil {
+        for node in [busMixer as AVAudioNode, equalizer, dynamics, limiter] where node.engine != nil
+        {
             engine.detach(node)
         }
 
@@ -226,7 +230,9 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
                 self.applyLiveParameters()
             } catch {
                 self.lastError = .outputUnavailable(error.localizedDescription)
-                AppLog.audio.error("Restart after device change failed: \(error.localizedDescription, privacy: .public)")
+                AppLog.audio.error(
+                    "Restart after device change failed: \(error.localizedDescription, privacy: .public)"
+                )
                 self.scheduleRecovery()
             }
         }
@@ -370,8 +376,9 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
         let parameters = settings.effectiveDampening
         let voicing = settings.profile.voicing
         let sampleRate = Float(processingFormat.sampleRate)
-        let offsets = SoundVariation.pitchOffsetsCents(amount: settings.variationAmount,
-                                                       enabled: settings.pitchVariationEnabled)
+        let offsets = SoundVariation.pitchOffsetsCents(
+            amount: settings.variationAmount,
+            enabled: settings.pitchVariationEnabled)
 
         var built: [KeyCategory: [AVAudioPCMBuffer]] = [:]
         for category in KeyCategory.allCases {
@@ -387,15 +394,19 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
                     var samples = source
                     let ratio = SamplePreparation.rate(forSemitones: categoryPitch + cents / 100)
                     samples = SamplePreparation.resample(samples, ratio: ratio)
-                    SamplePreparation.shapeTransient(&samples,
-                                                     reduction: parameters.transientReduction,
-                                                     sensitivity: voicing.transientSensitivity,
-                                                     sampleRate: sampleRate)
-                    SamplePreparation.dampenResonance(&samples,
-                                                      reduction: parameters.resonanceReduction,
-                                                      sampleRate: sampleRate)
+                    SamplePreparation.shapeTransient(
+                        &samples,
+                        reduction: parameters.transientReduction,
+                        sensitivity: voicing.transientSensitivity,
+                        sampleRate: sampleRate)
+                    SamplePreparation.dampenResonance(
+                        &samples,
+                        reduction: parameters.resonanceReduction,
+                        sampleRate: sampleRate)
                     SamplePreparation.normalizeIfClipping(&samples)
-                    if let buffer = SamplePreparation.buffer(from: samples, format: processingFormat) {
+                    if let buffer = SamplePreparation.buffer(
+                        from: samples, format: processingFormat)
+                    {
                         buffers.append(buffer)
                     }
                 }
@@ -404,7 +415,9 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
         }
 
         guard !built.isEmpty else {
-            AppLog.audio.error("Sample cache rebuild produced nothing for \(self.settings.profile.rawValue, privacy: .public)")
+            AppLog.audio.error(
+                "Sample cache rebuild produced nothing for \(self.settings.profile.rawValue, privacy: .public)"
+            )
             return
         }
         preparedBuffers = built
@@ -422,18 +435,22 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
 
     private func performPlay(category: KeyCategory) {
         guard running, engine.isRunning else { return }
-        guard let buffers = preparedBuffers[category] ?? preparedBuffers[.standard], !buffers.isEmpty else { return }
+        guard let buffers = preparedBuffers[category] ?? preparedBuffers[.standard],
+            !buffers.isEmpty
+        else { return }
 
         let index = variation.nextIndex(
             count: buffers.count, category: category, amount: settings.variationAmount)
         let buffer = buffers[index]
 
         let now = AVAudioTime.seconds(forHostTime: mach_absolute_time())
-        let player = claimPlayer(at: now, duration: Double(buffer.frameLength) / processingFormat.sampleRate)
+        let player = claimPlayer(
+            at: now, duration: Double(buffer.frameLength) / processingFormat.sampleRate)
 
         let categorySettings = settings.settings(for: category)
         let trim = powf(10, Float(categorySettings.gainDB) / 20)
-        player.volume = min(trim * variation.nextAmplitudeScalar(amount: settings.variationAmount), 4.0)
+        player.volume = min(
+            trim * variation.nextAmplitudeScalar(amount: settings.variationAmount), 4.0)
 
         // `.interrupts` matters when a voice is stolen under very fast typing:
         // the new sound starts now instead of queueing behind the old one.
@@ -472,9 +489,11 @@ extension AVSoundEngine {
     /// Not part of the app's own code paths: `start()` and this are mutually
     /// exclusive, because an engine can be in manual rendering mode or
     /// attached to a device, never both.
-    func renderOneShot(category: KeyCategory,
-                       settings: AppSettings,
-                       seconds: Double = 0.35) throws -> [Float] {
+    func renderOneShot(
+        category: KeyCategory,
+        settings: AppSettings,
+        seconds: Double = 0.35
+    ) throws -> [Float] {
         let sampleRate = processingFormat.sampleRate
         let frameCount = AVAudioFrameCount(seconds * sampleRate)
         let maximumFrames: AVAudioFrameCount = 4096

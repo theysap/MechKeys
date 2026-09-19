@@ -42,10 +42,12 @@ public final class MechKeysController {
     /// Dependencies are optional rather than defaulted, because default
     /// argument expressions are evaluated outside the actor and these types
     /// are main-actor isolated.
-    public init(settingsStore: SettingsStore? = nil,
-                permissions: PermissionManager? = nil,
-                engine: (any SoundEngine)? = nil,
-                monitor: KeyboardMonitor? = nil) {
+    public init(
+        settingsStore: SettingsStore? = nil,
+        permissions: PermissionManager? = nil,
+        engine: (any SoundEngine)? = nil,
+        monitor: KeyboardMonitor? = nil
+    ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.permissions = permissions ?? PermissionManager()
         self.engine = engine ?? AVSoundEngine()
@@ -108,9 +110,11 @@ public final class MechKeysController {
             engine.apply(settingsStore.settings)
             engineStatus = .running
         } catch {
-            let message = (error as? SoundEngineError).map {
-                [$0.errorDescription, $0.recoverySuggestion].compactMap { $0 }.joined(separator: " ")
-            } ?? error.localizedDescription
+            let message =
+                (error as? SoundEngineError).map {
+                    [$0.errorDescription, $0.recoverySuggestion].compactMap { $0 }.joined(
+                        separator: " ")
+                } ?? error.localizedDescription
             engineStatus = .failed(message)
             AppLog.audio.error("Audio engine unavailable: \(message, privacy: .public)")
         }

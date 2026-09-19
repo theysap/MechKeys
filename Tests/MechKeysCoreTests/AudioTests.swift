@@ -303,9 +303,10 @@ struct VariationDeterminismTests {
     @Test("Variation above zero does move between samples")
     func nonZeroVariationRotates() {
         var variation = SoundVariation()
-        let indices = Set((0..<80).map { _ in
-            variation.nextIndex(count: 5, category: .standard, amount: 1)
-        })
+        let indices = Set(
+            (0..<80).map { _ in
+                variation.nextIndex(count: 5, category: .standard, amount: 1)
+            })
         #expect(indices.count > 1)
     }
 }

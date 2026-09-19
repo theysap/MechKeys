@@ -61,7 +61,7 @@ public struct SoundVariation {
     public mutating func nextAmplitudeScalar(amount: Double) -> Float {
         guard amount > 0.0001 else { return 1 }
         let jitterDB = Self.maximumGainJitterDB * Float(amount)
-        let unit = Float(rng.next() % 10_000) / 10_000.0   // 0..<1
+        let unit = Float(rng.next() % 10_000) / 10_000.0  // 0..<1
         let offsetDB = (unit * 2 - 1) * jitterDB
         return powf(10, offsetDB / 20)
     }

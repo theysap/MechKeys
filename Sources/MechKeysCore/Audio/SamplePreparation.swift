@@ -29,10 +29,12 @@ public enum SamplePreparation {
     /// The first sample is attenuated by `reduction`, recovering to unity by
     /// the end of the attack window. The onset stays at sample zero — the
     /// sound is never delayed, it just arrives less sharply.
-    public static func shapeTransient(_ samples: inout [Float],
-                                      reduction: Float,
-                                      sensitivity: Float = 1.0,
-                                      sampleRate: Float) {
+    public static func shapeTransient(
+        _ samples: inout [Float],
+        reduction: Float,
+        sensitivity: Float = 1.0,
+        sampleRate: Float
+    ) {
         let amount = (reduction * sensitivity).clamped(to: 0...1)
         guard amount > 0.0001 else { return }
 
@@ -50,9 +52,11 @@ public enum SamplePreparation {
     }
 
     /// Chokes the decaying tail, so a dampened board stops ringing.
-    public static func dampenResonance(_ samples: inout [Float],
-                                       reduction: Float,
-                                       sampleRate: Float) {
+    public static func dampenResonance(
+        _ samples: inout [Float],
+        reduction: Float,
+        sampleRate: Float
+    ) {
         let amount = reduction.clamped(to: 0...1)
         guard amount > 0.0001 else { return }
 
@@ -117,8 +121,9 @@ public enum SamplePreparation {
 
     public static func buffer(from samples: [Float], format: AVAudioFormat) -> AVAudioPCMBuffer? {
         guard !samples.isEmpty,
-              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)),
-              let data = buffer.floatChannelData
+            let buffer = AVAudioPCMBuffer(
+                pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)),
+            let data = buffer.floatChannelData
         else { return nil }
 
         buffer.frameLength = AVAudioFrameCount(samples.count)

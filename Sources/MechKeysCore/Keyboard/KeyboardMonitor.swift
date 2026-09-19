@@ -20,7 +20,6 @@ public final class KeyboardMonitor {
     /// monitor's own thread — never block in here.
     public var onKeyEvent: ((KeyEvent) -> Void)?
 
-
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var thread: Thread?
@@ -73,16 +72,18 @@ public final class KeyboardMonitor {
         let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
         let context = Unmanaged.passUnretained(self).toOpaque()
 
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            // Listen-only: the tap is physically incapable of altering or
-            // dropping the user's keystrokes.
-            options: .listenOnly,
-            eventsOfInterest: CGEventMask(mask),
-            callback: keyboardMonitorCallback,
-            userInfo: context
-        ) else {
+        guard
+            let tap = CGEvent.tapCreate(
+                tap: .cgSessionEventTap,
+                place: .headInsertEventTap,
+                // Listen-only: the tap is physically incapable of altering or
+                // dropping the user's keystrokes.
+                options: .listenOnly,
+                eventsOfInterest: CGEventMask(mask),
+                callback: keyboardMonitorCallback,
+                userInfo: context
+            )
+        else {
             AppLog.keyboard.error("CGEvent.tapCreate failed.")
             return false
         }
@@ -204,10 +205,12 @@ public final class KeyboardMonitor {
 }
 
 /// C callback for the event tap. Kept free of Swift runtime work.
-private func keyboardMonitorCallback(proxy: CGEventTapProxy,
-                                     type: CGEventType,
-                                     event: CGEvent,
-                                     userInfo: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+private func keyboardMonitorCallback(
+    proxy: CGEventTapProxy,
+    type: CGEventType,
+    event: CGEvent,
+    userInfo: UnsafeMutableRawPointer?
+) -> Unmanaged<CGEvent>? {
     guard let userInfo else { return Unmanaged.passUnretained(event) }
     let monitor = Unmanaged<KeyboardMonitor>.fromOpaque(userInfo).takeUnretainedValue()
 

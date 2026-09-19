@@ -95,7 +95,8 @@ struct DampeningTests {
         // below the arithmetic midpoint of the two ends.
         let midpoint = DampeningCurve.parameters(for: 0.5).highFrequencyCutoff
         let arithmeticMean =
-            (DampeningCurve.sharp.highFrequencyCutoff + DampeningCurve.muted.highFrequencyCutoff) / 2
+            (DampeningCurve.sharp.highFrequencyCutoff + DampeningCurve.muted.highFrequencyCutoff)
+            / 2
         #expect(midpoint < arithmeticMean)
     }
 }
