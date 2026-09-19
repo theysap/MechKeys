@@ -1,0 +1,245 @@
+{
+  "generator": "Tools/generate_sounds.py",
+  "sampleRate": 48000,
+  "bitDepth": 16,
+  "channels": 1,
+  "variants": 5,
+  "seed": 20260919,
+  "profiles": {
+    "red": {
+      "description": "Linear, smooth, relatively quiet. Rounded bottom-out, soft transient.",
+      "categories": {
+        "standard": [
+          "standard_01.wav",
+          "standard_02.wav",
+          "standard_03.wav",
+          "standard_04.wav",
+          "standard_05.wav"
+        ],
+        "space": [
+          "space_01.wav",
+          "space_02.wav",
+          "space_03.wav",
+          "space_04.wav",
+          "space_05.wav"
+        ],
+        "enter": [
+          "enter_01.wav",
+          "enter_02.wav",
+          "enter_03.wav",
+          "enter_04.wav",
+          "enter_05.wav"
+        ],
+        "backspace": [
+          "backspace_01.wav",
+          "backspace_02.wav",
+          "backspace_03.wav",
+          "backspace_04.wav",
+          "backspace_05.wav"
+        ],
+        "tab": [
+          "tab_01.wav",
+          "tab_02.wav",
+          "tab_03.wav",
+          "tab_04.wav",
+          "tab_05.wav"
+        ],
+        "modifier": [
+          "modifier_01.wav",
+          "modifier_02.wav",
+          "modifier_03.wav",
+          "modifier_04.wav",
+          "modifier_05.wav"
+        ]
+      }
+    },
+    "brown": {
+      "description": "Tactile, moderate attack, more textured than Red. No exaggerated click.",
+      "categories": {
+        "standard": [
+          "standard_01.wav",
+          "standard_02.wav",
+          "standard_03.wav",
+          "standard_04.wav",
+          "standard_05.wav"
+        ],
+        "space": [
+          "space_01.wav",
+          "space_02.wav",
+          "space_03.wav",
+          "space_04.wav",
+          "space_05.wav"
+        ],
+        "enter": [
+          "enter_01.wav",
+          "enter_02.wav",
+          "enter_03.wav",
+          "enter_04.wav",
+          "enter_05.wav"
+        ],
+        "backspace": [
+          "backspace_01.wav",
+          "backspace_02.wav",
+          "backspace_03.wav",
+          "backspace_04.wav",
+          "backspace_05.wav"
+        ],
+        "tab": [
+          "tab_01.wav",
+          "tab_02.wav",
+          "tab_03.wav",
+          "tab_04.wav",
+          "tab_05.wav"
+        ],
+        "modifier": [
+          "modifier_01.wav",
+          "modifier_02.wav",
+          "modifier_03.wav",
+          "modifier_04.wav",
+          "modifier_05.wav"
+        ]
+      }
+    },
+    "blue": {
+      "description": "Tactile and clearly clicky. Sharp transient, strong high-frequency attack.",
+      "categories": {
+        "standard": [
+          "standard_01.wav",
+          "standard_02.wav",
+          "standard_03.wav",
+          "standard_04.wav",
+          "standard_05.wav"
+        ],
+        "space": [
+          "space_01.wav",
+          "space_02.wav",
+          "space_03.wav",
+          "space_04.wav",
+          "space_05.wav"
+        ],
+        "enter": [
+          "enter_01.wav",
+          "enter_02.wav",
+          "enter_03.wav",
+          "enter_04.wav",
+          "enter_05.wav"
+        ],
+        "backspace": [
+          "backspace_01.wav",
+          "backspace_02.wav",
+          "backspace_03.wav",
+          "backspace_04.wav",
+          "backspace_05.wav"
+        ],
+        "tab": [
+          "tab_01.wav",
+          "tab_02.wav",
+          "tab_03.wav",
+          "tab_04.wav",
+          "tab_05.wav"
+        ],
+        "modifier": [
+          "modifier_01.wav",
+          "modifier_02.wav",
+          "modifier_03.wav",
+          "modifier_04.wav",
+          "modifier_05.wav"
+        ]
+      }
+    },
+    "black": {
+      "description": "Heavy linear. Deeper body, substantial bottom-out, less sharpness.",
+      "categories": {
+        "standard": [
+          "standard_01.wav",
+          "standard_02.wav",
+          "standard_03.wav",
+          "standard_04.wav",
+          "standard_05.wav"
+        ],
+        "space": [
+          "space_01.wav",
+          "space_02.wav",
+          "space_03.wav",
+          "space_04.wav",
+          "space_05.wav"
+        ],
+        "enter": [
+          "enter_01.wav",
+          "enter_02.wav",
+          "enter_03.wav",
+          "enter_04.wav",
+          "enter_05.wav"
+        ],
+        "backspace": [
+          "backspace_01.wav",
+          "backspace_02.wav",
+          "backspace_03.wav",
+          "backspace_04.wav",
+          "backspace_05.wav"
+        ],
+        "tab": [
+          "tab_01.wav",
+          "tab_02.wav",
+          "tab_03.wav",
+          "tab_04.wav",
+          "tab_05.wav"
+        ],
+        "modifier": [
+          "modifier_01.wav",
+          "modifier_02.wav",
+          "modifier_03.wav",
+          "modifier_04.wav",
+          "modifier_05.wav"
+        ]
+      }
+    },
+    "yellow": {
+      "description": "Smooth linear, between Red and Black in weight. Clean, even attack.",
+      "categories": {
+        "standard": [
+          "standard_01.wav",
+          "standard_02.wav",
+          "standard_03.wav",
+          "standard_04.wav",
+          "standard_05.wav"
+        ],
+        "space": [
+          "space_01.wav",
+          "space_02.wav",
+          "space_03.wav",
+          "space_04.wav",
+          "space_05.wav"
+        ],
+        "enter": [
+          "enter_01.wav",
+          "enter_02.wav",
+          "enter_03.wav",
+          "enter_04.wav",
+          "enter_05.wav"
+        ],
+        "backspace": [
+          "backspace_01.wav",
+          "backspace_02.wav",
+          "backspace_03.wav",
+          "backspace_04.wav",
+          "backspace_05.wav"
+        ],
+        "tab": [
+          "tab_01.wav",
+          "tab_02.wav",
+          "tab_03.wav",
+          "tab_04.wav",
+          "tab_05.wav"
+        ],
+        "modifier": [
+          "modifier_01.wav",
+          "modifier_02.wav",
+          "modifier_03.wav",
+          "modifier_04.wav",
+          "modifier_05.wav"
+        ]
+      }
+    }
+  }
+}
