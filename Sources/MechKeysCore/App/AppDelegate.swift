@@ -106,6 +106,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // Reports what the app can actually see about its own access, and
+        // exits. Diagnosing "I granted it and it still says no" from the
+        // outside is guesswork; this asks the process itself.
+        if CommandLine.arguments.contains("--diagnose") {
+            print(Diagnostics.report())
+            NSApp.terminate(nil)
+            return
+        }
+
         if !controller.settingsStore.settings.hasCompletedOnboarding {
             showOnboarding()
         }

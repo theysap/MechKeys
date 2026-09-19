@@ -155,14 +155,36 @@ perfectly happy with.
 
 ### 3.2 The grant is keyed to the code signature
 
-macOS records the Accessibility grant against the application's signature. An
-ad-hoc signature (`codesign -s -`) differs on every build, so each rebuild looks
-like a different application and has to be granted again — which is a real
-nuisance during development and worth knowing before you go looking for a bug
-that is not there. A Developer ID identity is stable and does not have this
-problem.
+macOS records the Accessibility grant against the application's **signature**,
+not its name or its path. An ad-hoc signature (`codesign -s -`) contains a hash
+of the binary, so it differs in every build — and each rebuild is therefore a
+different application as far as TCC is concerned.
 
-### 3.3 Detecting the grant
+The failure this produces is genuinely confusing, because nothing reports it:
+the switch stays on in System Settings, pointing at a build that no longer
+exists, while the build you just made is refused. The app says it has no
+permission; the system says it was granted. Both are telling the truth about
+different binaries.
+
+Any *stable* identity fixes it. `Scripts/make-dev-certificate.sh` creates a
+self-signed code-signing certificate once, and `build-app.sh` picks it up
+automatically, so permission is granted once and then left alone across
+rebuilds. A Developer ID does the same for distribution builds.
+
+To clear a grant that is pointing at a build that is gone:
+
+```sh
+tccutil reset Accessibility com.mechkeys.app
+```
+
+### 3.3 Diagnosing it from the inside
+
+`MechKeys --diagnose` prints what the process itself can see: its bundle
+identity, its code signature, `AXIsProcessTrusted`, and whether an event tap
+can actually be created. Nothing outside the process can answer those
+questions, because TCC decides per process and per signature.
+
+### 3.4 Detecting the grant
 
 There is no notification for "the user just granted Accessibility", so the
 status is polled — but only while it is missing, by a `Task` that cancels

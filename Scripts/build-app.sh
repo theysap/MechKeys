@@ -118,16 +118,23 @@ plutil -lint "${CONTENTS}/Info.plist" > /dev/null
 printf 'APPL????' > "${CONTENTS}/PkgInfo"
 
 step "Signing"
+DEV_CERT="MechKeys Development"
 if [ -n "${DEVELOPER_ID_APPLICATION:-}" ]; then
     IDENTITY="${DEVELOPER_ID_APPLICATION}"
     # Notarisation refuses anything without a secure timestamp. An ad-hoc
     # signature cannot carry one at all.
     TIMESTAMP="--timestamp"
     note "identity: ${IDENTITY}"
+elif security find-identity -v -p codesigning 2> /dev/null | grep -q "${DEV_CERT}"; then
+    # A stable local identity, so the Accessibility grant survives a rebuild.
+    # See Scripts/make-dev-certificate.sh for why that matters.
+    IDENTITY="${DEV_CERT}"
+    TIMESTAMP="--timestamp=none"
+    note "identity: ${DEV_CERT} (local development)"
 else
     IDENTITY="-"
     TIMESTAMP="--timestamp=none"
-    note "ad-hoc (set DEVELOPER_ID_APPLICATION to sign for distribution)"
+    note "ad-hoc (set DEVELOPER_ID_APPLICATION, or run Scripts/make-dev-certificate.sh)"
 fi
 
 # No entitlements file and, in particular, no App Sandbox: a sandboxed process
@@ -140,10 +147,12 @@ codesign --verify --deep --strict "${APP}"
 
 # macOS keys the Accessibility grant to the code signature. An ad-hoc signature
 # changes on every build, so every rebuild looks like a different application
-# and the permission has to be granted again. A Developer ID identity is stable
-# and does not have this problem.
+# and the permission has to be granted again — the switch stays on in System
+# Settings, pointing at a build that no longer exists. Any stable identity
+# avoids this.
 if [ "${IDENTITY}" = "-" ]; then
-    note "ad-hoc signed: macOS will ask for Accessibility permission again after each rebuild."
+    note "ad-hoc signed: Accessibility permission will NOT survive a rebuild."
+    note "run ./Scripts/make-dev-certificate.sh once to fix that."
 fi
 
 step "Built ${APP}"

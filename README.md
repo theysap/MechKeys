@@ -286,7 +286,25 @@ export DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)"
 
 Without it the bundle is ad-hoc signed, which runs — but macOS keys the
 Accessibility grant to the code signature, and an ad-hoc signature changes on
-every build, so **each rebuild has to be granted permission again**.
+every build. Each rebuild is then a different app to macOS: the switch stays on
+in System Settings pointing at a build that no longer exists, while the new one
+is silently refused.
+
+Run this once and the problem goes away, because the signing identity stops
+changing:
+
+```sh
+./Scripts/make-dev-certificate.sh
+```
+
+If permission is already stuck, clear the stale grant and start again:
+
+```sh
+tccutil reset Accessibility com.mechkeys.app
+```
+
+`MechKeys --diagnose` prints the app's own view of its signature and whether it
+can actually create an event tap.
 
 ### The sounds
 
