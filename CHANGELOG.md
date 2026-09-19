@@ -3,6 +3,52 @@
 All notable changes to MechKeys are recorded here. Versions are the commit
 subjects, in `vX.Y.Z` form.
 
+## v0.2.0
+
+The application itself: menu bar, configuration window, onboarding, and a
+build that produces a real `.app`.
+
+### Added
+
+- **Menu bar popover** with the three controls worth reaching for mid-task —
+  switch, dampening, volume — plus Test Sound, keyboard-access status and
+  launch at login.
+- **Configuration window** in four tabs (Sound, Keys, Behaviour, General),
+  built on `Form`/`.formStyle(.grouped)`. Everything applies live; "Save &
+  Close" confirms and dismisses, and "Revert Changes" undoes the whole
+  session's edits from a snapshot taken when the window opened.
+- **Advanced dampening**: all six DSP parameters exposed behind a disclosure,
+  with a manual-override mode seeded from the curve so switching to it is
+  audibly a no-op.
+- **Onboarding**: three screens — what it is, the one permission it needs,
+  and done.
+- **`Scripts/build-app.sh`** assembles `MechKeys.app` by hand from the Swift
+  package: bundles all 150 samples into `Contents/Resources/Sounds`, renders
+  the icon from `Scripts/make-icon.swift`, writes `Info.plist` with
+  `LSUIElement`, and signs with the hardened runtime. No App Sandbox — a
+  sandboxed process cannot create a `CGEventTap` at all.
+
+### Changed
+
+- **Swift 6.2 tools, Swift 6 language mode, macOS 26 minimum.** The interface
+  is built on Liquid Glass (`.glassEffect`, `.buttonStyle(.glass)` and
+  `.glassProminent`), which does not exist before macOS 26. Built and run
+  against the 26 and 27 SDKs.
+- **`@Observable` throughout** instead of `ObservableObject`/`@Published`,
+  with a `follow` helper re-arming `withObservationTracking` for the non-UI
+  parts that react to settings changes.
+- **Launch at login** now mirrors `SMAppService` rather than being persisted.
+  The system owns that state, and the user can switch it off in System
+  Settings; storing our own copy only created something to disagree with.
+- Permission polling moved from `Timer` to a cancellable `Task`, which also
+  lets the type clean up from a nonisolated `deinit`.
+
+### Fixed
+
+- Window activation no longer yanks focus from whatever the user is typing
+  into. Only the first-launch welcome window insists; the configuration
+  window, opened mid-task from the menu bar, activates politely.
+
 ## v0.1.0
 
 Foundation: the sound library and the core engine.

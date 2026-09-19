@@ -1,6 +1,5 @@
 import AVFoundation
 import Foundation
-import OSLog
 
 /// Finds and decodes the bundled sample library.
 ///
@@ -17,7 +16,6 @@ public final class SoundLibrary {
         public var isUsable: Bool { loadedSamples > 0 }
     }
 
-    private let logger = Logger(subsystem: "com.mechkeys.app", category: "SoundLibrary")
     private let fileManager = FileManager.default
 
     public let rootURL: URL?
@@ -33,7 +31,7 @@ public final class SoundLibrary {
     public init(rootURL: URL? = SoundLibrary.defaultRootURL()) {
         self.rootURL = rootURL
         if rootURL == nil {
-            logger.error("No sound library directory could be located.")
+            AppLog.library.error("No sound library directory could be located.")
         }
     }
 
@@ -95,7 +93,7 @@ public final class SoundLibrary {
         let direct = rawSamples(profile: profile, category: category)
         if !direct.isEmpty { return direct }
         guard category != .standard else { return [] }
-        logger.warning("Falling back to standard samples for \(category.rawValue, privacy: .public)")
+        AppLog.library.warning("Falling back to standard samples for \(category.rawValue, privacy: .public)")
         return rawSamples(profile: profile, category: .standard)
     }
 
@@ -135,7 +133,7 @@ public final class SoundLibrary {
             } catch {
                 // A corrupt or unreadable file costs us one variant, nothing more.
                 noteMissing(name)
-                logger.error("Could not read \(name, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                AppLog.library.error("Could not read \(name, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 return nil
             }
         }

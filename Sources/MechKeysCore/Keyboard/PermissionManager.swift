@@ -1,23 +1,42 @@
 import AppKit
 import ApplicationServices
-import Combine
 import Foundation
+import Observation
 
 /// Tracks the Accessibility permission that a global event tap requires.
 ///
-/// macOS has no notification for "the user just granted Accessibility", so the
-/// status is polled — but only while it is missing, and only while the app is
-/// actually waiting for it. Once granted, polling stops for good.
+/// macOS posts no notification when the user grants Accessibility, so the
+/// status has to be polled — but only while it is missing. The moment it is
+/// granted the polling task ends and never runs again.
+///
+/// Polling and the activation watch are both structured concurrency tasks
+/// rather than a `Timer` and a `NotificationCenter` token: a `Task` is
+/// `Sendable` and cancellable, so this type can clean itself up from a
+/// nonisolated `deinit`, which main-actor-bound objects cannot.
 @MainActor
-public final class PermissionManager: ObservableObject {
+@Observable
+public final class PermissionManager {
 
-    @Published public private(set) var isTrusted: Bool = false
+    public private(set) var isTrusted: Bool = false
 
-    /// True once we have shown the system prompt, so we never nag twice.
-    @Published public private(set) var hasPrompted: Bool = false
+    /// True once the system prompt has been shown, so the user is never asked
+    /// twice — the second time we send them to System Settings instead.
+    public private(set) var hasPrompted: Bool = false
 
-    private var pollTimer: Timer?
-    private var activationObserver: NSObjectProtocol?
+    @ObservationIgnored
+    private var pollTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var activationTask: Task<Void, Never>?
+
+    /// How often to re-check while permission is missing.
+    private static let pollInterval = Duration.seconds(1)
+
+    /// The literal value of `kAXTrustedCheckOptionPrompt`.
+    ///
+    /// The imported constant is a global `var` of a non-Sendable type, which
+    /// Swift 6 will not allow from a nonisolated context. The key's spelling
+    /// is API and cannot change, so it is written out.
+    nonisolated private static let promptOptionKey = "AXTrustedCheckOptionPrompt"
 
     public init() {
         isTrusted = Self.currentStatus()
@@ -26,10 +45,8 @@ public final class PermissionManager: ObservableObject {
     }
 
     deinit {
-        pollTimer?.invalidate()
-        if let activationObserver {
-            NotificationCenter.default.removeObserver(activationObserver)
-        }
+        pollTask?.cancel()
+        activationTask?.cancel()
     }
 
     /// Checks trust without showing a prompt.
@@ -37,8 +54,7 @@ public final class PermissionManager: ObservableObject {
     /// `nonisolated` because the keyboard monitor checks this from its own
     /// thread before creating the tap; the underlying API is thread-safe.
     nonisolated public static func currentStatus() -> Bool {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
+        AXIsProcessTrustedWithOptions([promptOptionKey: false] as CFDictionary)
     }
 
     @discardableResult
@@ -48,19 +64,19 @@ public final class PermissionManager: ObservableObject {
             isTrusted = status
         }
         if status {
-            stopPolling()
-        } else if pollTimer == nil {
+            pollTask?.cancel()
+            pollTask = nil
+        } else if pollTask == nil {
             startPolling()
         }
         return status
     }
 
-    /// Shows the system's own "grant Accessibility" prompt. Called only from a
-    /// deliberate user action.
+    /// Shows the system's own "grant Accessibility" prompt. Only ever called
+    /// from a deliberate user action.
     public func requestAccess() {
         hasPrompted = true
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
+        _ = AXIsProcessTrustedWithOptions([Self.promptOptionKey: true] as CFDictionary)
         startPolling()
     }
 
@@ -73,34 +89,31 @@ public final class PermissionManager: ObservableObject {
         startPolling()
     }
 
-    // MARK: - Polling
+    // MARK: - Watching
 
     private func startPolling() {
-        guard pollTimer == nil else { return }
-        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+        guard pollTask == nil else { return }
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.pollInterval)
+                guard let self, !Task.isCancelled else { return }
+                // refresh() cancels this task once permission arrives.
+                if self.refresh() { return }
+            }
         }
-        // Tolerance lets the timer coalesce with other wakeups, so the idle
-        // cost of waiting for permission is negligible.
-        timer.tolerance = 0.5
-        RunLoop.main.add(timer, forMode: .common)
-        pollTimer = timer
     }
 
-    private func stopPolling() {
-        pollTimer?.invalidate()
-        pollTimer = nil
-    }
-
-    /// Returning from System Settings is the most likely moment for the status
-    /// to have changed, so check immediately rather than waiting for the tick.
+    /// Returning from System Settings is the likeliest moment for the status
+    /// to have changed, so check then rather than waiting for the next tick.
     private func observeActivation() {
-        activationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+        activationTask = Task { [weak self] in
+            let notifications = NotificationCenter.default.notifications(
+                named: NSApplication.didBecomeActiveNotification
+            )
+            for await _ in notifications {
+                guard let self, !Task.isCancelled else { return }
+                self.refresh()
+            }
         }
     }
 }

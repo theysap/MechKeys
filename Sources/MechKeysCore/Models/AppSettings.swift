@@ -102,7 +102,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     // MARK: App
 
-    public var launchAtLogin: Bool
     public var hasCompletedOnboarding: Bool
     public var showsMenuBarStateInIcon: Bool
 
@@ -131,7 +130,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         keyRepeatMode: .silent,
         minimumKeyInterval: 0.022,
         maximumVoices: 16,
-        launchAtLogin: false,
         hasCompletedOnboarding: false,
         showsMenuBarStateInIcon: true
     )
@@ -154,7 +152,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 keyRepeatMode: KeyRepeatMode,
                 minimumKeyInterval: Double,
                 maximumVoices: Int,
-                launchAtLogin: Bool,
                 hasCompletedOnboarding: Bool,
                 showsMenuBarStateInIcon: Bool) {
         self.isEnabled = isEnabled
@@ -171,7 +168,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.keyRepeatMode = keyRepeatMode
         self.minimumKeyInterval = minimumKeyInterval
         self.maximumVoices = maximumVoices
-        self.launchAtLogin = launchAtLogin
         self.hasCompletedOnboarding = hasCompletedOnboarding
         self.showsMenuBarStateInIcon = showsMenuBarStateInIcon
     }
@@ -199,7 +195,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         keyRepeatMode = value(.keyRepeatMode, fallback.keyRepeatMode)
         minimumKeyInterval = value(.minimumKeyInterval, fallback.minimumKeyInterval)
         maximumVoices = value(.maximumVoices, fallback.maximumVoices)
-        launchAtLogin = value(.launchAtLogin, fallback.launchAtLogin)
         hasCompletedOnboarding = value(.hasCompletedOnboarding, fallback.hasCompletedOnboarding)
         showsMenuBarStateInIcon = value(.showsMenuBarStateInIcon, fallback.showsMenuBarStateInIcon)
         self = self.normalized()

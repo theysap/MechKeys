@@ -1,8 +1,7 @@
-import Combine
 import Foundation
-import OSLog
+import Observation
 
-/// Wires the four subsystems together and owns the app's runtime state.
+/// Wires the subsystems together and owns the app's runtime state.
 ///
 /// ```
 ///   SettingsStore ──▶ MechKeysController ──▶ SoundEngine
@@ -13,9 +12,10 @@ import OSLog
 /// Nothing else in the app talks to the engine or the monitor directly: views
 /// change settings, and settings changes flow down through here.
 @MainActor
-public final class MechKeysController: ObservableObject {
+@Observable
+public final class MechKeysController {
 
-    public enum EngineStatus: Equatable {
+    public enum EngineStatus: Equatable, Sendable {
         case idle
         case running
         case failed(String)
@@ -26,41 +26,39 @@ public final class MechKeysController: ObservableObject {
     public let settingsStore: SettingsStore
     public let permissions: PermissionManager
 
-    @Published public private(set) var engineStatus: EngineStatus = .idle
-    @Published public private(set) var isListening = false
-    @Published public private(set) var launchAtLoginStatus: String = LaunchAtLogin.statusDescription
+    public private(set) var engineStatus: EngineStatus = .idle
+    public private(set) var isListening = false
 
-    private let engine: SoundEngine
+    @ObservationIgnored
+    private let engine: any SoundEngine
+    @ObservationIgnored
     private let monitor: KeyboardMonitor
-    private let logger = Logger(subsystem: "com.mechkeys.app", category: "Controller")
-    private var cancellables: Set<AnyCancellable> = []
+
+    /// Read from the monitor's thread on every keypress, so it is cached in a
+    /// plain stored property rather than reached for through the store.
+    @ObservationIgnored
+    private nonisolated(unsafe) var currentProfile: SoundProfile = AppSettings.default.profile
 
     /// Dependencies are optional rather than defaulted, because default
-    /// argument expressions are evaluated outside the actor and these types are
-    /// main-actor isolated.
+    /// argument expressions are evaluated outside the actor and these types
+    /// are main-actor isolated.
     public init(settingsStore: SettingsStore? = nil,
                 permissions: PermissionManager? = nil,
-                engine: SoundEngine? = nil,
+                engine: (any SoundEngine)? = nil,
                 monitor: KeyboardMonitor? = nil) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.permissions = permissions ?? PermissionManager()
         self.engine = engine ?? AVSoundEngine()
         self.monitor = monitor ?? KeyboardMonitor()
-        let monitor = self.monitor
 
-        monitor.onKeyEvent = { [weak self] event in
+        let engineRef = self.engine
+        self.monitor.onKeyEvent = { [weak self] event in
             // Arrives on the monitor's thread. `play` only enqueues, so this
             // returns straight back to the event tap.
             guard let self else { return }
-            self.engine.play(keyCategory: event.category, profile: self.currentProfile)
+            engineRef.play(keyCategory: event.category, profile: self.currentProfile)
         }
-
-        observe()
     }
-
-    /// Read from the monitor's thread on every keypress, so it is cached here
-    /// rather than reached for through the main-actor-isolated store.
-    private var currentProfile: SoundProfile = AppSettings.default.profile
 
     // MARK: - Start-up
 
@@ -69,6 +67,7 @@ public final class MechKeysController: ObservableObject {
     public func startUp() {
         startEngineIfNeeded()
         apply(settingsStore.settings)
+        startFollowing()
     }
 
     public func shutDown() {
@@ -78,23 +77,16 @@ public final class MechKeysController: ObservableObject {
         engineStatus = .idle
     }
 
-    private func observe() {
-        currentProfile = settingsStore.settings.profile
-
-        settingsStore.$settings
-            .removeDuplicates()
-            .sink { [weak self] settings in
-                self?.apply(settings)
-            }
-            .store(in: &cancellables)
-
-        permissions.$isTrusted
-            .removeDuplicates()
-            .sink { [weak self] _ in
-                guard let self else { return }
-                self.updateListening(self.settingsStore.settings)
-            }
-            .store(in: &cancellables)
+    /// Re-applies settings whenever any of them, or the permission state,
+    /// changes. `follow` re-arms itself, so this is set up once.
+    private func startFollowing() {
+        follow { [weak self] in
+            guard let self else { return }
+            // Both reads are what register this closure for change tracking.
+            let settings = self.settingsStore.settings
+            _ = self.permissions.isTrusted
+            self.apply(settings)
+        }
     }
 
     // MARK: - Applying settings
@@ -104,7 +96,6 @@ public final class MechKeysController: ObservableObject {
         engine.apply(settings)
         monitor.update(from: settings)
         updateListening(settings)
-        syncLaunchAtLogin(settings)
     }
 
     private func startEngineIfNeeded() {
@@ -121,7 +112,7 @@ public final class MechKeysController: ObservableObject {
                 [$0.errorDescription, $0.recoverySuggestion].compactMap { $0 }.joined(separator: " ")
             } ?? error.localizedDescription
             engineStatus = .failed(message)
-            logger.error("Audio engine unavailable: \(message, privacy: .public)")
+            AppLog.audio.error("Audio engine unavailable: \(message, privacy: .public)")
         }
     }
 
@@ -129,38 +120,22 @@ public final class MechKeysController: ObservableObject {
     /// user has finished onboarding, and permission exists. Otherwise it is
     /// fully torn down — not merely ignored.
     private func updateListening(_ settings: AppSettings) {
-        let shouldListen = settings.isEnabled
+        let shouldListen =
+            settings.isEnabled
             && settings.hasCompletedOnboarding
             && permissions.isTrusted
 
         if shouldListen {
             startEngineIfNeeded()
-            if !monitor.isRunning {
+            if monitor.isRunning {
+                isListening = true
+            } else {
                 isListening = monitor.start()
                 if !isListening { permissions.refresh() }
-            } else {
-                isListening = true
             }
-        } else if monitor.isRunning {
-            monitor.stop()
-            isListening = false
         } else {
+            if monitor.isRunning { monitor.stop() }
             isListening = false
-        }
-    }
-
-    private func syncLaunchAtLogin(_ settings: AppSettings) {
-        let actual = LaunchAtLogin.isEnabled
-        guard actual != settings.launchAtLogin else {
-            launchAtLoginStatus = LaunchAtLogin.statusDescription
-            return
-        }
-        let achieved = LaunchAtLogin.setEnabled(settings.launchAtLogin)
-        launchAtLoginStatus = LaunchAtLogin.statusDescription
-        if achieved != settings.launchAtLogin {
-            // macOS refused — most likely the user has the login item switched
-            // off in System Settings. Reflect reality instead of lying.
-            settingsStore.settings.launchAtLogin = achieved
         }
     }
 

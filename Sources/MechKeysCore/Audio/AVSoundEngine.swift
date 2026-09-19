@@ -1,6 +1,5 @@
 import AVFoundation
 import Foundation
-import OSLog
 
 /// The real audio engine.
 ///
@@ -45,7 +44,6 @@ public final class AVSoundEngine: SoundEngine {
     // MARK: State
 
     private let library: SoundLibrary
-    private let logger = Logger(subsystem: "com.mechkeys.app", category: "AudioEngine")
 
     /// Everything touching the engine runs here. Serialising on one
     /// user-interactive queue keeps the CGEvent callback free and keeps
@@ -122,7 +120,7 @@ public final class AVSoundEngine: SoundEngine {
             } catch {
                 let failure = SoundEngineError.outputUnavailable(error.localizedDescription)
                 lastError = failure
-                logger.error("Engine start failed: \(error.localizedDescription, privacy: .public)")
+                AppLog.audio.error("Engine start failed: \(error.localizedDescription, privacy: .public)")
                 throw failure
             }
 
@@ -199,7 +197,7 @@ public final class AVSoundEngine: SoundEngine {
     private func handleConfigurationChange() {
         queue.async { [weak self] in
             guard let self, self.running else { return }
-            self.logger.info("Audio configuration changed; rebuilding graph.")
+            AppLog.audio.info("Audio configuration changed; rebuilding graph.")
             self.running = false
             self.engine.stop()
             self.buildGraph()
@@ -214,7 +212,7 @@ public final class AVSoundEngine: SoundEngine {
                 self.applyLiveParameters()
             } catch {
                 self.lastError = .outputUnavailable(error.localizedDescription)
-                self.logger.error("Restart after device change failed: \(error.localizedDescription, privacy: .public)")
+                AppLog.audio.error("Restart after device change failed: \(error.localizedDescription, privacy: .public)")
                 self.scheduleRecovery()
             }
         }
@@ -236,7 +234,7 @@ public final class AVSoundEngine: SoundEngine {
                 self.running = true
                 self.lastError = nil
                 self.applyLiveParameters()
-                self.logger.info("Audio output recovered.")
+                AppLog.audio.info("Audio output recovered.")
             } catch {
                 self.scheduleRecovery()
             }
@@ -392,7 +390,7 @@ public final class AVSoundEngine: SoundEngine {
         }
 
         guard !built.isEmpty else {
-            logger.error("Sample cache rebuild produced nothing for \(self.settings.profile.rawValue, privacy: .public)")
+            AppLog.audio.error("Sample cache rebuild produced nothing for \(self.settings.profile.rawValue, privacy: .public)")
             return
         }
         preparedBuffers = built

@@ -1,6 +1,5 @@
 import CoreGraphics
 import Foundation
-import OSLog
 
 /// Watches for key-down events system-wide.
 ///
@@ -21,7 +20,6 @@ public final class KeyboardMonitor {
     /// monitor's own thread — never block in here.
     public var onKeyEvent: ((KeyEvent) -> Void)?
 
-    private let logger = Logger(subsystem: "com.mechkeys.app", category: "KeyboardMonitor")
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -68,7 +66,7 @@ public final class KeyboardMonitor {
     public func start() -> Bool {
         guard !isRunning else { return true }
         guard PermissionManager.currentStatus() else {
-            logger.info("Not starting: Accessibility permission has not been granted.")
+            AppLog.keyboard.info("Not starting: Accessibility permission has not been granted.")
             return false
         }
 
@@ -85,7 +83,7 @@ public final class KeyboardMonitor {
             callback: keyboardMonitorCallback,
             userInfo: context
         ) else {
-            logger.error("CGEvent.tapCreate failed.")
+            AppLog.keyboard.error("CGEvent.tapCreate failed.")
             return false
         }
 
@@ -111,7 +109,7 @@ public final class KeyboardMonitor {
         thread.start()
         self.thread = thread
 
-        logger.info("Keyboard monitor started.")
+        AppLog.keyboard.info("Keyboard monitor started.")
         return true
     }
 
@@ -132,14 +130,14 @@ public final class KeyboardMonitor {
         runLoopSource = nil
         threadRunLoop = nil
         thread = nil
-        logger.info("Keyboard monitor stopped.")
+        AppLog.keyboard.info("Keyboard monitor stopped.")
     }
 
     /// macOS disables a tap that takes too long to respond, or during a secure
     /// input session. Re-enabling is the documented recovery.
     fileprivate func reenableTap() {
         guard let eventTap else { return }
-        logger.warning("Event tap was disabled by the system; re-enabling.")
+        AppLog.keyboard.warning("Event tap was disabled by the system; re-enabling.")
         CGEvent.tapEnable(tap: eventTap, enable: true)
     }
 
