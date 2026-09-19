@@ -25,8 +25,6 @@ public final class DynamicsProcessor: AVAudioUnitEffect, @unchecked Sendable {
         case overallGain = 6
     }
 
-    private var parameters: [AUParameterAddress: AUParameter] = [:]
-
     override public init() {
         let description = AudioComponentDescription(
             componentType: kAudioUnitType_Effect,
@@ -36,16 +34,11 @@ public final class DynamicsProcessor: AVAudioUnitEffect, @unchecked Sendable {
             componentFlagsMask: 0
         )
         super.init(audioComponentDescription: description)
-
-        if let tree = auAudioUnit.parameterTree {
-            for parameter in tree.allParameters {
-                parameters[parameter.address] = parameter
-            }
-        }
     }
 
     private func set(_ address: Address, _ value: Float) {
-        guard let parameter = parameters[address.rawValue] else { return }
+        guard let parameter = auAudioUnit.parameterTree?.parameter(withAddress: address.rawValue)
+        else { return }
         parameter.setValue(
             value.clamped(to: parameter.minValue...parameter.maxValue), originator: nil)
     }
@@ -106,8 +99,6 @@ public final class PeakLimiter: AVAudioUnitEffect, @unchecked Sendable {
         case preGain = 2
     }
 
-    private var parameters: [AUParameterAddress: AUParameter] = [:]
-
     override public init() {
         let description = AudioComponentDescription(
             componentType: kAudioUnitType_Effect,
@@ -117,13 +108,10 @@ public final class PeakLimiter: AVAudioUnitEffect, @unchecked Sendable {
             componentFlagsMask: 0
         )
         super.init(audioComponentDescription: description)
+    }
 
-        if let tree = auAudioUnit.parameterTree {
-            for parameter in tree.allParameters {
-                parameters[parameter.address] = parameter
-            }
-        }
-
+    /// Applied once the unit is attached, for the reason described above.
+    public func configure() {
         // Fast enough to catch a keypress transient, short enough to have let
         // go again before the next key lands.
         set(.attackTime, 0.0008)
@@ -132,7 +120,8 @@ public final class PeakLimiter: AVAudioUnitEffect, @unchecked Sendable {
     }
 
     private func set(_ address: Address, _ value: Float) {
-        guard let parameter = parameters[address.rawValue] else { return }
+        guard let parameter = auAudioUnit.parameterTree?.parameter(withAddress: address.rawValue)
+        else { return }
         parameter.setValue(
             value.clamped(to: parameter.minValue...parameter.maxValue), originator: nil)
     }

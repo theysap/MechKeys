@@ -12,6 +12,7 @@ Run through this before tagging a release.
 - [ ] `./Scripts/test.sh` passes
 - [ ] `swift format lint --recursive --strict Sources Tests` is clean
 - [ ] `./Scripts/build-app.sh` produces `dist/MechKeys.app`
+- [ ] `MechKeys.app/Contents/Resources/LICENSE-sounds.txt` is present
 - [ ] `./Scripts/make-dmg.sh` produces a disk image that mounts
 
 ## First run
@@ -88,6 +89,7 @@ Type in each and confirm sound:
 - [ ] No sound is delayed at any position
 - [ ] No crunch or distortion at the muted end
 - [ ] Every profile stays recognisable across the whole slider
+- [ ] Each profile sounds like the switch it is named after
 
 ## Robustness
 

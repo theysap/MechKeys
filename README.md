@@ -22,16 +22,17 @@ anywhere in macOS — Safari, Terminal, VS Code, Slack, Notes, a Spotlight query
 
 **Five switch profiles**, each with its own transient, body and ring:
 
-| Profile | Character | |
-|---|---|---|
-| **Red** | `tap / clack` | Linear and smooth. Quiet, rounded bottom-out, soft transient. |
-| **Brown** | `tick / clack` | Tactile with a little texture. Moderate attack, no exaggerated click. |
-| **Blue** | `CLICK` | Tactile and clicky. The loudest and sharpest, with a strong high-frequency attack. |
-| **Black** | `thock` | Heavy linear. Deep body, substantial bottom-out, less sharpness. |
-| **Yellow** | `clack` | Smooth linear, between Red and Black in perceived weight. |
+| Profile | Character | Recorded from | |
+|---|---|---|---|
+| **Red** | `tap / clack` | Gateron Ink Red | Linear and smooth. Quiet, rounded bottom-out. |
+| **Brown** | `thock` | Drop Holy Panda | Deep tactile. Dark and rounded, with a full bottom-out. |
+| **Blue** | `CLICK` | Kailh Box Navy | Tactile and clicky. The loudest and sharpest of the five. |
+| **Black** | `clack` | Gateron Ink Black | Heavy linear. Substantial bottom-out with a firm clack. |
+| **Yellow** | `creamy` | NovelKeys Cream | Smooth, creamy linear. Even and unfussy. |
 
-They are original synthesised sounds inspired by the character of common switch
-types, not affiliated with or endorsed by any manufacturer.
+These are **recordings of real switches**, not synthesised approximations.
+Switch names identify the recording; MechKeys is not affiliated with or
+endorsed by any manufacturer.
 
 ### The dampening control is the point
 
@@ -61,11 +62,11 @@ body back, gentle compression, and transient softening applied to the sample
 itself. All six are exposed under **Advanced** if you want to set them by hand.
 
 Measured on the shipping signal chain, end to end: the proportion of energy
-above 3 kHz falls from 0.48 to 0.010 — about **46×** — monotonically, while the
-level does not follow it down, and the sound still starts in the very first
-sample. Those three properties are asserted by tests on every run, because
-"not a volume control" and "not a delay" are claims that are easy to make and
-easy to quietly break.
+above 3 kHz falls from 0.56 to 0.0007 — nearly **three orders of magnitude** —
+monotonically, while the level only drops to about half, and the sound still
+starts in the very first sample. Those three properties are asserted by tests
+on every run, because "not a volume control" and "not a delay" are claims that
+are easy to make and easy to quietly break.
 
 ### Different keys, different sounds
 
@@ -78,9 +79,9 @@ entirely.
 
 ### It does not sound like a loop
 
-Five separate recordings per key, never the same one twice in a row, with up to
-±2 dB of level and ±18 cents of pitch on each press. Turn variation to zero and
-it means it: the same sample, every time.
+Five separate recordings of an ordinary key, never the same one twice in a row,
+with up to ±2 dB of level and ±18 cents of pitch on each press. Turn variation
+to zero and it means it: the same sample, every time.
 
 <div align="center">
 <img src="docs/images/configure.png" width="560" alt="The configuration window, Sound tab">
@@ -261,8 +262,8 @@ parameter writes and takes effect on the very next keypress.
 
 [**TECHNICAL.md**](TECHNICAL.md) covers the whole of it: the event path and what
 is deliberately not retained, the audio graph, the dampening curve and why each
-parameter is eased the way it is, why the EQ sits after the compressor, how the
-samples are synthesised, and how the audio claims in this README are measured
+parameter is eased the way it is, why the EQ sits after the compressor, where
+the recordings come from, and how the audio claims in this README are measured
 without a speaker.
 
 ## Building
@@ -289,18 +290,16 @@ every build, so **each rebuild has to be granted permission again**.
 
 ### The sounds
 
-All 150 bundled samples are synthesised by
-[`Tools/generate_sounds.py`](Tools/generate_sounds.py) from a physical sketch of
-a keyswitch. Nothing is recorded, sampled or downloaded, so there is no
-licensing encumbrance on any of it — see [assets/LICENSES.md](assets/LICENSES.md).
+All 120 bundled recordings are of real keyboards, by Thomas Lai (`tplai`),
+published as part of kbsim under the MIT licence. They ship inside the app
+bundle — there is no download step and no network call at runtime. The MIT
+notice travels with them in the bundle, which is what the licence requires;
+see [assets/LICENSES.md](assets/LICENSES.md) for the full provenance.
 
-```sh
-python3 Tools/generate_sounds.py    # needs numpy
-```
-
-They are committed so that a clone builds without Python. The generator is
-deterministic, and CI checks the committed `.wav` files are byte for byte what
-it produces.
+[`Tools/import_sounds.py`](Tools/import_sounds.py) reproduces the conversion
+from the upstream packs: resample to 48 kHz, trim leading silence, short edge
+fades, normalise. They are committed so a clone builds with no network and no
+Python.
 
 ### Development
 

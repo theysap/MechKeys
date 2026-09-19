@@ -22,9 +22,9 @@ struct SoundSettingsView: View {
             } footer: {
                 Text(
                     """
-                    Acoustic profiles inspired by the character of common switch \
-                    types. Original synthesised sounds, not affiliated with or \
-                    endorsed by any manufacturer.
+                    Recordings of real switches. Switch names identify the \
+                    recording; MechKeys is not affiliated with or endorsed by \
+                    any manufacturer.
                     """
                 )
                 .font(.caption)

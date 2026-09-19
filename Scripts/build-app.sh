@@ -35,13 +35,6 @@ RESET=$'\033[0m'
 step() { echo "${GREEN}==>${RESET} $*"; }
 note() { echo "${YELLOW}    $*${RESET}"; }
 
-# The sample library is generated, not committed as a binary blob nobody can
-# review. Regenerate it if it is missing, so a fresh clone builds in one step.
-if [ ! -f "Resources/Sounds/manifest.json" ]; then
-    step "Generating sound library"
-    python3 Tools/generate_sounds.py
-fi
-
 step "Building ${APP_NAME} ${VERSION} (build ${BUILD_NUMBER}, ${CONFIGURATION})"
 swift build -c "${CONFIGURATION}" 2>&1 | grep -vE "ld: warning: search path" || true
 
@@ -73,6 +66,9 @@ iconutil -c icns "${ICONSET}" -o "${RESOURCES}/AppIcon.icns"
 rm -rf "${ICONSET_DIR}"
 
 cp LICENSE "${RESOURCES}/LICENSE.txt"
+# The recordings are MIT licensed by their author; the notice travels with
+# them, inside the bundle. See assets/LICENSES.md.
+cp Resources/LICENSE-sounds.txt "${RESOURCES}/LICENSE-sounds.txt"
 
 step "Writing Info.plist"
 cat > "${CONTENTS}/Info.plist" <<PLIST

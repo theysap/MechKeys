@@ -1,57 +1,77 @@
 # Sound asset licensing
 
-Every sound MechKeys ships is **original work, generated from scratch** by
-[`Tools/generate_sounds.py`](../Tools/generate_sounds.py). No recording,
-sample, or third-party asset of any kind is bundled, downloaded or used.
+Every sound MechKeys ships is a recording of a real mechanical keyboard. All
+120 files live inside the app bundle; nothing is downloaded at runtime and the
+app makes no network requests.
+
+## What is bundled
 
 | | |
 | --- | --- |
-| **Files** | `Resources/Sounds/{red,brown,blue,black,yellow}/{standard,space,enter,backspace,tab,modifier}_{01..05}.wav` |
-| **Count** | 150 (5 profiles × 6 key categories × 5 variants) |
+| **Files** | `Resources/Sounds/{red,brown,blue,black,yellow}/{standard,space,enter,backspace,tab,modifier}_{01..}.wav` |
+| **Count** | 120 (5 profiles × 6 key categories, 3–5 variants each) |
 | **Format** | WAV, mono, 48 kHz, 16-bit PCM |
-| **Source** | `Tools/generate_sounds.py`, this repository |
-| **Creator** | Aashish Paruvada |
-| **Licence** | MIT, the same as the rest of the project — see [`LICENSE`](../LICENSE) |
-| **Attribution required** | No |
+| **Recordings by** | Thomas Lai (`tplai`), published as part of [kbsim](https://github.com/tplai/kbsim) |
+| **Obtained from** | the [thock-soundpacks](https://github.com/kamillobinski/thock-soundpacks) registry |
+| **Licence** | MIT — see [`tplai/kbsim` LICENSE.md](https://github.com/tplai/kbsim/blob/master/LICENSE.md) |
+| **Attribution required** | Yes: the copyright notice must travel with the recordings |
 | **Redistribution** | Permitted, including commercially |
-| **Date created** | 2026-09-19 |
+| **Date retrieved** | 2026-09-19 |
 
-## How they are made
+The notice is bundled as `MechKeys.app/Contents/Resources/LICENSE-sounds.txt`,
+which is what the MIT licence requires. `assets/SOURCES.json` pins the exact
+pack identifiers, and `Tools/import_sounds.py` reproduces the conversion.
 
-Each sample is synthesised from a physical sketch of what a mechanical
-keyswitch does when it is pressed, rather than being recorded:
+## Which recording became which profile
 
-1. **Click** — the tactile jacket snapping. A high-Q resonant noise burst with
-   a near-instant attack and a short decay.
-2. **Tick** — keycap and stem contact. A softer mid-frequency burst that gives
-   the sound its texture.
-3. **Bottom-out** — the stem hitting the housing a few milliseconds later. A
-   broadband thump, and the body of the sound.
-4. **Case modes** — plate and case resonance, as exponentially damped sinusoids
-   at slightly inharmonic frequencies. This is the "thock" tail.
-5. **Stabiliser rattle** — on the spacebar, Return and the modifiers, a second
-   quieter bottom-out a few milliseconds late plus a faint metallic ping.
+Each pack was chosen because the switch actually sounds like what the profile
+claims to be:
 
-Per-profile voicings and per-category pitch and weight live in one table at the
-top of the generator. The seeding is deterministic (SHA-256 of the profile,
-category and variant names), so the library is reproducible byte for byte, and
-CI verifies that the committed files are exactly what the generator produces.
+| Profile | Switch | Why |
+| --- | --- | --- |
+| **Red** | Gateron Ink Red | Smooth linear, quiet, rounded |
+| **Brown** | Drop Holy Panda | The definitive tactile — deep and dark |
+| **Blue** | Kailh Box Navy | The definitive clicky — loud and sharp |
+| **Black** | Gateron Ink Black | Heavy linear with a firm clack |
+| **Yellow** | NovelKeys Cream | Smooth, creamy linear |
 
-## Why not recordings
+Switch names identify the recording. No manufacturer endorsement is implied and
+MechKeys is not affiliated with any of them.
 
-Recorded keyboard samples are the obvious route and were considered. They were
-rejected because:
+Each pack supplies five separate recordings of an ordinary key plus dedicated
+spacebar, Return and Delete recordings. Tab and the modifiers have no recording
+of their own and are the ordinary ones pitched down a fraction — a wider key,
+but not a stabilised one.
 
-- Redistribution rights for keyboard recordings found online are frequently
-  unclear, and an application that ships them inherits that uncertainty.
-- A recording cannot be re-voiced. Synthesis means the resonance frequency of
-  each profile is a known number, which is what lets the dampening chain aim
-  its filters at the right place per profile instead of applying one fixed
-  curve to everything.
-- 150 consistent variants would otherwise be a recording session with a
-  controlled room, five keyboards and careful level matching.
+## Processing
 
-If recorded samples are ever added, they must be documented in this file with
-filename, source URL, creator, licence, licence URL, date retrieved, and any
-attribution requirement — and anything whose redistribution rights are not
-clearly established must not ship.
+Deliberately minimal, so what ships is the recording rather than an effect
+built on one. `Tools/import_sounds.py`:
+
+- resamples 44.1 kHz to 48 kHz in the frequency domain, which is exact for a
+  band-limited signal rather than the smear linear interpolation leaves on a
+  transient this sharp;
+- removes leading digital silence, so a keypress starts when it starts;
+- applies 2 ms boundary fades, so no buffer can click at its edges;
+- peak-normalises, then scales by the profile's relative loudness, so a Box
+  Navy stays audibly louder than an Ink Black.
+
+## What was rejected, and why
+
+- **The "Thocky / Creamy / Marbly / Clacky" packs** circulating in the same
+  ecosystem are excerpts from a YouTube keyboard-review video. The project that
+  publishes them states that permission was granted for *that project only* and
+  that reuse rights were not established. Redistributing them here would not be
+  covered.
+- **The Pixabay-sourced pack** in the upstream registry has an unidentified
+  source item and no established permission to distribute the individual files.
+- **Synthesised samples.** MechKeys originally shipped 150 samples generated
+  from a physical model of a switch. They were licence-free and fully
+  reproducible, but they did not sound authentic, which is the whole point of
+  the app. The generator was removed when the recordings replaced it.
+
+## If sounds are ever changed again
+
+Anything added must be documented here with filename, source URL, creator,
+licence, licence URL, date retrieved, and any attribution requirement — and
+anything whose redistribution rights are not clearly established must not ship.

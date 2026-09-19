@@ -1,0 +1,12 @@
+{
+  "registry": "https://github.com/kamillobinski/thock-soundpacks",
+  "registryManifest": "https://raw.githubusercontent.com/kamillobinski/thock-soundpacks/HEAD/manifest.json",
+  "note": "Recordings of real switches by Thomas Lai (tplai), MIT licensed. Re-import with Tools/import_sounds.py.",
+  "packs": {
+    "red":    { "name": "Ink Red",     "brand": "Gateron",   "author": "tplai", "license": "MIT", "id": "631754b0-eafe-4b14-b86e-61842f1f195c" },
+    "brown":  { "name": "Holy Panda",  "brand": "Drop",      "author": "tplai", "license": "MIT", "id": "4da844a6-346e-4361-84fd-5bc142ff975e" },
+    "blue":   { "name": "Box Navy",    "brand": "Kailh",     "author": "tplai", "license": "MIT", "id": "c573d01e-2d20-4844-9286-a9e628ef8f3b" },
+    "black":  { "name": "Ink Black",   "brand": "Gateron",   "author": "tplai", "license": "MIT", "id": "b9bfb429-16c6-449f-aa85-5da083696f68" },
+    "yellow": { "name": "Cream",       "brand": "NovelKeys", "author": "tplai", "license": "MIT", "id": "f0cc3d8e-5b1e-4412-a3f0-8a4f70912d0e" }
+  }
+}

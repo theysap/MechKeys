@@ -121,7 +121,7 @@ public enum DampeningCurve {
     /// down, which is exactly what it must not be.
     public static func makeupGainDB(for amount: Float) -> Float {
         let t = amount.clamped(to: 0...1)
-        return lerp(0.0, 7.5, t.eased(power: 0.9))
+        return lerp(0.0, 16.0, t.eased(power: 0.9))
     }
 
     private static func lerp(_ a: Float, _ b: Float, _ t: Float) -> Float {

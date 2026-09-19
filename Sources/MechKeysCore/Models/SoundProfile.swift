@@ -2,9 +2,11 @@ import Foundation
 
 /// The built-in acoustic profiles.
 ///
-/// These are *inspired by* the acoustic character of common switch types. They
-/// are original synthesised sounds and are not affiliated with, endorsed by, or
-/// sponsored by any switch manufacturer.
+/// Each is a set of recordings of the switch it is named after — Gateron Ink
+/// Red, Drop Holy Panda, Kailh Box Navy, Gateron Ink Black and NovelKeys
+/// Cream. The switch name identifies the recording; MechKeys is not affiliated
+/// with, endorsed by, or sponsored by any switch manufacturer. See
+/// `assets/LICENSES.md` for provenance.
 public enum SoundProfile: String, CaseIterable, Codable, Identifiable, Hashable, Sendable {
     case red
     case brown
@@ -27,10 +29,10 @@ public enum SoundProfile: String, CaseIterable, Codable, Identifiable, Hashable,
     public var summary: String {
         switch self {
         case .red: return "Linear and smooth. Quiet, rounded bottom-out."
-        case .brown: return "Tactile with a little texture. Moderate attack."
+        case .brown: return "Deep tactile. Dark and rounded, with a full bottom-out."
         case .blue: return "Tactile and clicky. The loudest, sharpest profile."
-        case .black: return "Heavy linear. Deep body, substantial bottom-out."
-        case .yellow: return "Smooth linear, between Red and Black in weight."
+        case .black: return "Heavy linear. Substantial bottom-out with a firm clack."
+        case .yellow: return "Smooth, creamy linear. Even and unfussy."
         }
     }
 
@@ -38,10 +40,10 @@ public enum SoundProfile: String, CaseIterable, Codable, Identifiable, Hashable,
     public var character: String {
         switch self {
         case .red: return "tap / clack"
-        case .brown: return "tick / clack"
+        case .brown: return "thock"
         case .blue: return "CLICK"
-        case .black: return "thock"
-        case .yellow: return "clack"
+        case .black: return "clack"
+        case .yellow: return "creamy"
         }
     }
 
@@ -50,31 +52,35 @@ public enum SoundProfile: String, CaseIterable, Codable, Identifiable, Hashable,
 
     /// The fixed acoustic fingerprint of this profile.
     ///
-    /// The dampening chain reads these to know *where* to cut: a Blue rings at
-    /// 5.4 kHz and a Black at 2.0 kHz, so applying the same filter to both
-    /// would dampen one and gut the other.
+    /// Measured from the bundled recordings, not guessed: `resonanceHz` is the
+    /// dominant peak between 1.5 and 9 kHz, `bodyHz` the energy centroid below
+    /// 600 Hz, `brightness` the overall spectral centroid normalised across
+    /// the five, and `transientSensitivity` how quickly the sample reaches its
+    /// peak. The dampening chain reads these to know *where* to cut: a Box
+    /// Navy rings at 2.3 kHz with a far peakier resonance than an Ink Black,
+    /// and one fixed filter would dampen one and hollow out the other.
     public var voicing: ProfileVoicing {
         switch self {
         case .red:
             return ProfileVoicing(
-                resonanceHz: 3400, resonanceQ: 1.1, bodyHz: 205,
-                brightness: 0.48, transientSensitivity: 0.85)
+                resonanceHz: 3012, resonanceQ: 1.30, bodyHz: 229,
+                brightness: 0.62, transientSensitivity: 0.99)
         case .brown:
             return ProfileVoicing(
-                resonanceHz: 4100, resonanceQ: 1.3, bodyHz: 198,
-                brightness: 0.60, transientSensitivity: 0.95)
+                resonanceHz: 2312, resonanceQ: 1.60, bodyHz: 341,
+                brightness: 0.28, transientSensitivity: 0.70)
         case .blue:
             return ProfileVoicing(
-                resonanceHz: 5400, resonanceQ: 1.8, bodyHz: 232,
-                brightness: 0.92, transientSensitivity: 1.00)
+                resonanceHz: 2285, resonanceQ: 2.00, bodyHz: 257,
+                brightness: 0.96, transientSensitivity: 0.78)
         case .black:
             return ProfileVoicing(
-                resonanceHz: 2100, resonanceQ: 0.9, bodyHz: 148,
-                brightness: 0.32, transientSensitivity: 0.70)
+                resonanceHz: 2152, resonanceQ: 1.20, bodyHz: 283,
+                brightness: 0.59, transientSensitivity: 1.00)
         case .yellow:
             return ProfileVoicing(
-                resonanceHz: 2700, resonanceQ: 1.0, bodyHz: 172,
-                brightness: 0.41, transientSensitivity: 0.80)
+                resonanceHz: 3331, resonanceQ: 1.30, bodyHz: 216,
+                brightness: 0.51, transientSensitivity: 0.99)
         }
     }
 }

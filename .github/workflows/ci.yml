@@ -34,19 +34,22 @@ jobs:
       - name: Test
         run: ./Scripts/test.sh
 
-      # The bundled samples are committed so that a clone builds without Python.
-      # This checks they are exactly what the generator produces, so nobody can
-      # quietly hand-edit a .wav into the repository.
-      - name: Verify the sound library is reproducible
+      # The recordings are committed, so a clone builds with no network and no
+      # Python. This checks the library is complete and well-formed rather than
+      # byte-reproducible: it is imported from an upstream registry, not
+      # generated, so there is nothing local to regenerate it from.
+      - name: Verify the sound library
         run: |
-          python3 -m pip install --quiet numpy
-          shasum -a 256 Resources/Sounds/*/*.wav | sort > /tmp/before.txt
-          python3 Tools/generate_sounds.py
-          shasum -a 256 Resources/Sounds/*/*.wav | sort > /tmp/after.txt
-          diff /tmp/before.txt /tmp/after.txt || {
-            echo "The committed samples do not match Tools/generate_sounds.py" >&2
-            exit 1
-          }
+          count="$(find Resources/Sounds -name '*.wav' | wc -l | tr -d ' ')"
+          [ "${count}" -eq 120 ] || { echo "expected 120 samples, found ${count}" >&2; exit 1; }
+          for profile in red brown blue black yellow; do
+            for category in standard space enter backspace tab modifier; do
+              ls Resources/Sounds/"${profile}"/"${category}"_*.wav > /dev/null \
+                || { echo "missing ${profile}/${category}" >&2; exit 1; }
+            done
+          done
+          test -f Resources/LICENSE-sounds.txt || { echo "missing sound licence" >&2; exit 1; }
+          echo "120 samples, all profiles and categories present"
 
       - name: Build application bundle
         run: ./Scripts/build-app.sh

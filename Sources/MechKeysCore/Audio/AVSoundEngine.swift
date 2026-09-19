@@ -352,6 +352,8 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
 
         // Perceptual taper: a linear slider mapped straight to amplitude puts
         // almost all of the useful range in the bottom third.
+        limiter.configure()
+
         engine.mainMixerNode.outputVolume = powf(Float(settings.volume), 1.6)
     }
 

@@ -309,70 +309,87 @@ Filtering away the top end makes a sound quieter, and a dampening control that
 also turns the volume down is indistinguishable from the volume control. So
 makeup gain rises to +7.5 dB across the slider.
 
-That gain, plus the low-mid shelf, can push a loud profile past full scale —
-measured at 1.007 on a Blue keypress, which is clipping. An `AUPeakLimiter`
-sits last in the chain as the honest fix. Pre-emptively turning everything down
+Makeup rises to +16 dB at the muted end. With the recordings, +7.5 dB left the
+muted end at 0.21 of the sharp end's level — still audibly a volume cut. At
++16 dB it sits at 0.52.
+
+That gain, plus the low-mid shelf, can push a loud profile past full scale. An
+`AUPeakLimiter` sits last in the chain as the honest fix. Pre-emptively turning everything down
 to leave headroom would make the app quiet for the sake of a case that only
 occurs at the extremes.
 
 ### 5.6 The measured result
 
-At 0%, 25%, 50%, 75% and 100%, the proportion of energy above 3 kHz:
+At 0%, 25%, 50%, 75% and 100% dampening, on a Blue, the proportion of energy
+above 3 kHz:
 
 ```
-0.476   0.203   0.0705   0.0273   0.0104
+0.556   0.369   0.167   0.0272   0.00069
 ```
 
-Monotonic, and about 46× end to end. Level does not follow it down. The sound
-begins in the first sample at every position; what changes is how quickly the
-attack reaches full amplitude, by 4.3 ms between the extremes — an order of
-magnitude inside the ~10 ms at which a gap between key and sound is felt.
+Monotonic, and a little over 800× end to end. RMS level across the same sweep
+stays within about a factor of two (0.038 → 0.020), which is what stops the
+control being a volume knob. The sound begins in the first sample at every
+position; what changes is how quickly the attack reaches full amplitude.
 
 ## 6. The sample library
 
-150 samples: 5 profiles × 6 key categories × 5 variants, mono 48 kHz 16-bit,
-about 2.5 MB, all inside the app bundle. Nothing is downloaded, ever.
+120 recordings: 5 profiles × 6 key categories, three to five variants each,
+mono 48 kHz 16-bit, about 1.1 MB, all inside the app bundle. Nothing is
+downloaded, ever.
 
-They are **synthesised**, not recorded, by `Tools/generate_sounds.py` from a
-sketch of what a switch physically does:
+They are **recordings of real keyboards** by Thomas Lai (`tplai`), published as
+part of kbsim and obtained from the thock-soundpacks registry under the MIT
+licence. Each profile is the switch it claims to be:
 
-1. **Click** — the tactile jacket snapping. A high-Q resonant noise burst with
-   a near-instant attack and a short decay.
-2. **Tick** — keycap and stem contact. A softer mid-frequency burst that gives
-   the sound its texture.
-3. **Bottom-out** — the stem hitting the housing a few milliseconds later. A
-   broadband thump, and the body of the sound.
-4. **Case modes** — plate and case resonance, as exponentially damped sinusoids
-   at slightly inharmonic frequencies. The "thock" tail.
-5. **Stabiliser rattle** — on the spacebar, Return and the modifiers, a second
-   quieter bottom-out a few milliseconds late plus a faint metallic ping.
+| Profile | Switch |
+|---|---|
+| red | Gateron Ink Red |
+| brown | Drop Holy Panda |
+| blue | Kailh Box Navy |
+| black | Gateron Ink Black |
+| yellow | NovelKeys Cream |
 
-Noise is shaped in the frequency domain rather than through cascaded biquads,
-which avoids filter ringing smearing the very transient the whole thing is
-about.
+Each pack supplies five separate recordings of an ordinary key plus dedicated
+spacebar, Return and Delete recordings — which is exactly the shape MechKeys
+wants. Tab and the modifiers have no recording of their own and are the
+ordinary ones pitched down a fraction: a wider key, but not a stabilised one.
 
-### 6.1 Why synthesised
+### 6.1 Processing
 
-Three reasons, in order of how much they mattered:
+`Tools/import_sounds.py`, and deliberately minimal, so what ships is the
+recording rather than an effect built on one:
 
-- Redistribution rights for keyboard recordings found online are frequently
-  unclear, and an app that ships them inherits that uncertainty.
-- A recording cannot be re-voiced. Synthesis means each profile's resonance
-  frequency is a *known number*, which is what lets §5.3 aim the notch per
-  profile instead of applying one fixed curve to everything.
-- 150 consistent variants would otherwise be a recording session with a
-  controlled room, five keyboards and careful level matching.
+- resampled 44.1 kHz to 48 kHz **in the frequency domain**, which is exact for
+  a band-limited signal. Linear interpolation would round off the very
+  transient that makes a switch sound like that switch;
+- leading digital silence removed, so a keypress starts when it starts;
+- 2 ms boundary fades, so no buffer can click at its edges;
+- peak-normalised, then scaled by the profile's relative loudness, so a Box
+  Navy stays audibly louder than an Ink Black.
 
-### 6.2 Reproducibility
+### 6.2 What was rejected
 
-The generator seeds each sample from a SHA-256 of the profile, category and
-variant names. It originally used Python's `hash()`, which is **salted per
-process** — so it produced a different library on every run, and the committed
-files could not be checked against it. That is now a CI step: regenerate, and
-diff the checksums.
+The same ecosystem circulates a set of "Thocky / Creamy / Marbly / Clacky"
+packs. They are excerpts from a YouTube keyboard-review video, and the project
+publishing them states that permission covers *that project only* and that
+reuse rights were not established. They are not used here. Neither is the
+registry's Pixabay-sourced pack, whose source item is unidentified.
 
-Every sample is peak-normalised to the profile's relative loudness, capped so
-that a loud profile on a heavy key (a Blue spacebar) cannot reach full scale.
+### 6.3 What was replaced
+
+MechKeys originally shipped 150 samples synthesised from a physical model of a
+switch: a click transient, a keycap tick, a bottom-out thump, damped case
+resonance modes and stabiliser rattle. That library was licence-free and
+byte-reproducible, and it is documented in the history around `v0.1.0`.
+
+It was replaced because it did not sound authentic, which is the entire point
+of the app. Synthesis had one real advantage worth recording — each profile's
+resonance frequency was a *known* number, which §5.3 relies on. That is now
+recovered by measuring the recordings instead: the values in `ProfileVoicing`
+are the dominant peak between 1.5 and 9 kHz, the energy centroid below 600 Hz,
+the normalised spectral centroid, and the time to peak, taken from the bundled
+files rather than chosen.
 
 ## 7. Natural variation
 
@@ -480,9 +497,10 @@ the five profiles keep their brightness ordering, that large keys are deeper
 than ordinary ones, that nothing clips, and that a manual DSP override reaches
 the output.
 
-Three defects were found this way and would not have been found otherwise: the
-clipping in §5.5, the post-filter harmonics in §5.4, and the brightness
-inversion in §5.1.
+Four defects were found this way and would not have been found otherwise: the
+clipping in §5.5, the post-filter harmonics in §5.4, the brightness inversion
+in §5.1, and — worst of the lot — §11's dead audio-unit parameters, which had
+silently disabled the compressor, the limiter and the makeup gain entirely.
 
 ### 10.1 Two measurement mistakes worth recording
 
@@ -524,8 +542,21 @@ convenience subclasses for EQ, reverb, delay and distortion, but not for
 dynamics. The compressor and the limiter are instantiated from their Audio Unit
 component descriptions and reached through `auAudioUnit.parameterTree`; the
 older `AudioUnitSetParameter` route on `.audioUnit` is deprecated as of
-macOS 27. `AUParameter` objects are looked up once at init, so setting one at
-runtime is a single store.
+macOS 27.
+
+**An `AUParameter` cached before the unit is attached is dead.** This one cost
+real time and is worth stating plainly. `AVAudioUnitEffect` exposes a perfectly
+valid-looking `parameterTree` the moment it is constructed — seven parameters,
+correct addresses, correct ranges, writes accepted without error. It is not the
+tree the running unit reads from. Every write to those cached references was
+silently discarded, which meant the compressor, the peak limiter and the whole
+loudness-compensation system had never once taken effect. Nothing failed and
+nothing logged; the makeup gain could be set anywhere from 0 to 40 dB with
+*byte-identical* rendered output, which is what finally gave it away.
+
+Parameters are therefore resolved from `auAudioUnit.parameterTree` on every
+write. Writes happen on settings changes, never per keypress, so the lookup
+costs nothing that matters.
 
 **`kAXTrustedCheckOptionPrompt` cannot be touched from a nonisolated context.**
 It is imported as a global `var` of a non-Sendable type, which Swift 6 refuses.

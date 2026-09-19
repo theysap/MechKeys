@@ -24,14 +24,7 @@ swift build > /dev/null || fail "Build failed."
 step "Testing"
 ./Scripts/test.sh > /dev/null 2>&1 || fail "Tests failed. Run ./Scripts/test.sh to see why."
 
-# The samples are committed, so they must match what the generator produces.
-# Only checked when the generator itself is part of the commit, since it needs
-# numpy and most commits do not touch it.
-if git diff --cached --name-only | grep -q "Tools/generate_sounds.py"; then
-    step "Verifying the sound library matches the generator"
-    before="$(shasum -a 256 Resources/Sounds/*/*.wav | sort)"
-    python3 Tools/generate_sounds.py > /dev/null
-    after="$(shasum -a 256 Resources/Sounds/*/*.wav | sort)"
-    [ "${before}" = "${after}" ] \
-        || fail "Samples changed. Commit the regenerated Resources/Sounds too."
+# The recordings ship inside the bundle, so the licence notice has to ship too.
+if [ ! -f Resources/LICENSE-sounds.txt ]; then
+    fail "Resources/LICENSE-sounds.txt is missing; the recordings are MIT licensed."
 fi

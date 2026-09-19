@@ -1,13 +1,12 @@
 {
-  "generator": "Tools/generate_sounds.py",
+  "generator": "Tools/import_sounds.py",
   "sampleRate": 48000,
   "bitDepth": 16,
   "channels": 1,
-  "variants": 5,
-  "seed": 20260919,
   "profiles": {
     "red": {
-      "description": "Linear, smooth, relatively quiet. Rounded bottom-out, soft transient.",
+      "source": "Gateron Ink Red",
+      "license": "MIT",
       "categories": {
         "standard": [
           "standard_01.wav",
@@ -19,23 +18,17 @@
         "space": [
           "space_01.wav",
           "space_02.wav",
-          "space_03.wav",
-          "space_04.wav",
-          "space_05.wav"
+          "space_03.wav"
         ],
         "enter": [
           "enter_01.wav",
           "enter_02.wav",
-          "enter_03.wav",
-          "enter_04.wav",
-          "enter_05.wav"
+          "enter_03.wav"
         ],
         "backspace": [
           "backspace_01.wav",
           "backspace_02.wav",
-          "backspace_03.wav",
-          "backspace_04.wav",
-          "backspace_05.wav"
+          "backspace_03.wav"
         ],
         "tab": [
           "tab_01.wav",
@@ -54,7 +47,8 @@
       }
     },
     "brown": {
-      "description": "Tactile, moderate attack, more textured than Red. No exaggerated click.",
+      "source": "Drop Holy Panda",
+      "license": "MIT",
       "categories": {
         "standard": [
           "standard_01.wav",
@@ -66,23 +60,17 @@
         "space": [
           "space_01.wav",
           "space_02.wav",
-          "space_03.wav",
-          "space_04.wav",
-          "space_05.wav"
+          "space_03.wav"
         ],
         "enter": [
           "enter_01.wav",
           "enter_02.wav",
-          "enter_03.wav",
-          "enter_04.wav",
-          "enter_05.wav"
+          "enter_03.wav"
         ],
         "backspace": [
           "backspace_01.wav",
           "backspace_02.wav",
-          "backspace_03.wav",
-          "backspace_04.wav",
-          "backspace_05.wav"
+          "backspace_03.wav"
         ],
         "tab": [
           "tab_01.wav",
@@ -101,7 +89,8 @@
       }
     },
     "blue": {
-      "description": "Tactile and clearly clicky. Sharp transient, strong high-frequency attack.",
+      "source": "Kailh Box Navy",
+      "license": "MIT",
       "categories": {
         "standard": [
           "standard_01.wav",
@@ -113,23 +102,17 @@
         "space": [
           "space_01.wav",
           "space_02.wav",
-          "space_03.wav",
-          "space_04.wav",
-          "space_05.wav"
+          "space_03.wav"
         ],
         "enter": [
           "enter_01.wav",
           "enter_02.wav",
-          "enter_03.wav",
-          "enter_04.wav",
-          "enter_05.wav"
+          "enter_03.wav"
         ],
         "backspace": [
           "backspace_01.wav",
           "backspace_02.wav",
-          "backspace_03.wav",
-          "backspace_04.wav",
-          "backspace_05.wav"
+          "backspace_03.wav"
         ],
         "tab": [
           "tab_01.wav",
@@ -148,7 +131,8 @@
       }
     },
     "black": {
-      "description": "Heavy linear. Deeper body, substantial bottom-out, less sharpness.",
+      "source": "Gateron Ink Black",
+      "license": "MIT",
       "categories": {
         "standard": [
           "standard_01.wav",
@@ -160,23 +144,17 @@
         "space": [
           "space_01.wav",
           "space_02.wav",
-          "space_03.wav",
-          "space_04.wav",
-          "space_05.wav"
+          "space_03.wav"
         ],
         "enter": [
           "enter_01.wav",
           "enter_02.wav",
-          "enter_03.wav",
-          "enter_04.wav",
-          "enter_05.wav"
+          "enter_03.wav"
         ],
         "backspace": [
           "backspace_01.wav",
           "backspace_02.wav",
-          "backspace_03.wav",
-          "backspace_04.wav",
-          "backspace_05.wav"
+          "backspace_03.wav"
         ],
         "tab": [
           "tab_01.wav",
@@ -195,7 +173,8 @@
       }
     },
     "yellow": {
-      "description": "Smooth linear, between Red and Black in weight. Clean, even attack.",
+      "source": "NovelKeys Cream",
+      "license": "MIT",
       "categories": {
         "standard": [
           "standard_01.wav",
@@ -207,23 +186,17 @@
         "space": [
           "space_01.wav",
           "space_02.wav",
-          "space_03.wav",
-          "space_04.wav",
-          "space_05.wav"
+          "space_03.wav"
         ],
         "enter": [
           "enter_01.wav",
           "enter_02.wav",
-          "enter_03.wav",
-          "enter_04.wav",
-          "enter_05.wav"
+          "enter_03.wav"
         ],
         "backspace": [
           "backspace_01.wav",
           "backspace_02.wav",
-          "backspace_03.wav",
-          "backspace_04.wav",
-          "backspace_05.wav"
+          "backspace_03.wav"
         ],
         "tab": [
           "tab_01.wav",

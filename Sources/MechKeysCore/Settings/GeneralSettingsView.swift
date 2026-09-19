@@ -87,7 +87,7 @@ struct GeneralSettingsView: View {
 
             Section {
                 LabeledContent("Version", value: AppInfo.versionDescription)
-                LabeledContent("Sounds", value: "Synthesised originals, bundled")
+                LabeledContent("Sounds", value: "Recorded switches, bundled")
 
                 HStack(spacing: 10) {
                     Button("Reset Settings…") { showingResetConfirmation = true }
