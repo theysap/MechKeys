@@ -92,12 +92,18 @@ public enum DampeningCurve {
         // Body lift lags: it should only become obvious once the top end has
         // actually gone, otherwise low dampening just sounds boomy.
         let bodyT = t.eased(power: 1.45)
+        // Ring-out lags too. Choking the tail removes low-frequency case
+        // resonance, and early in the slider that happens faster than the
+        // filter removes treble — measured: the high-frequency energy ratio
+        // rose from 0% to 12% before falling. The brief is "slightly less
+        // resonance" there, so it should barely have started.
+        let resonanceT = t.eased(power: 1.35)
 
         return DampeningParameters(
             highFrequencyCutoff: logLerp(sharp.highFrequencyCutoff, muted.highFrequencyCutoff, t),
             highFrequencyGain: lerp(sharp.highFrequencyGain, muted.highFrequencyGain, t.eased(power: 1.15)),
             transientReduction: lerp(sharp.transientReduction, muted.transientReduction, transientT),
-            resonanceReduction: lerp(sharp.resonanceReduction, muted.resonanceReduction, t),
+            resonanceReduction: lerp(sharp.resonanceReduction, muted.resonanceReduction, resonanceT),
             compressionAmount: lerp(sharp.compressionAmount, muted.compressionAmount, t.eased(power: 1.25)),
             lowMidGain: lerp(sharp.lowMidGain, muted.lowMidGain, bodyT)
         ).clamped()

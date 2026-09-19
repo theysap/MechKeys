@@ -7,8 +7,15 @@ import Foundation
 ///
 /// ```
 ///   [player 0] ─┐
-///   [player 1] ─┼─▶ bus mixer ─▶ EQ (4 bands) ─▶ dynamics ─▶ main mixer ─▶ out
+///   [player 1] ─┼─▶ bus ─▶ dynamics ─▶ EQ (4 bands) ─▶ limiter ─▶ mixer ─▶ out
 ///   [player n] ─┘
+///
+/// The EQ sits *after* the compressor deliberately. Gain-riding a sharp
+/// transient generates harmonics, and with the filter in front of it those
+/// harmonics landed above the low-pass corner — measured: at full dampening
+/// the high-frequency energy ratio rose again instead of continuing to fall,
+/// which is audible as crunch on a setting that is supposed to be a soft thud.
+/// Filtering last removes them.
 /// ```
 ///
 /// The graph is built once at launch and stays alive for the life of the
@@ -23,7 +30,9 @@ import Foundation
 ///   * **Live, on the shared bus** — low-pass, high shelf, resonance notch,
 ///     low-mid shelf and compression. These are just parameter writes, so they
 ///     take effect on the very next keypress with no rebuild.
-public final class AVSoundEngine: SoundEngine {
+/// Every mutable member is touched only from `queue`, which is what makes the
+/// unchecked conformance sound. The compiler cannot see that invariant.
+public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
 
     // MARK: Graph
 
@@ -31,6 +40,7 @@ public final class AVSoundEngine: SoundEngine {
     private let busMixer = AVAudioMixerNode()
     private let equalizer = AVAudioUnitEQ(numberOfBands: 4)
     private let dynamics = DynamicsProcessor()
+    private let limiter = PeakLimiter()
     private var players: [AVAudioPlayerNode] = []
 
     /// Frame time (on the shared clock) at which each player is free again.
@@ -158,17 +168,21 @@ public final class AVSoundEngine: SoundEngine {
         players.removeAll()
         playerFreeAt.removeAll()
 
-        for node in [busMixer as AVAudioNode, equalizer, dynamics] where node.engine != nil {
+        for node in [busMixer as AVAudioNode, equalizer, dynamics, limiter] where node.engine != nil {
             engine.detach(node)
         }
 
         engine.attach(busMixer)
         engine.attach(equalizer)
         engine.attach(dynamics)
+        engine.attach(limiter)
 
-        engine.connect(busMixer, to: equalizer, format: processingFormat)
-        engine.connect(equalizer, to: dynamics, format: processingFormat)
-        engine.connect(dynamics, to: engine.mainMixerNode, format: processingFormat)
+        engine.connect(busMixer, to: dynamics, format: processingFormat)
+        engine.connect(dynamics, to: equalizer, format: processingFormat)
+        engine.connect(equalizer, to: limiter, format: processingFormat)
+        // The limiter is last, after the master volume has had its say, so
+        // nothing downstream can push the signal back over full scale.
+        engine.connect(limiter, to: engine.mainMixerNode, format: processingFormat)
 
         let voiceCount = settings.maximumVoices
         for _ in 0..<voiceCount {
@@ -410,7 +424,8 @@ public final class AVSoundEngine: SoundEngine {
         guard running, engine.isRunning else { return }
         guard let buffers = preparedBuffers[category] ?? preparedBuffers[.standard], !buffers.isEmpty else { return }
 
-        let index = variation.nextIndex(count: buffers.count, category: category)
+        let index = variation.nextIndex(
+            count: buffers.count, category: category, amount: settings.variationAmount)
         let buffer = buffers[index]
 
         let now = AVAudioTime.seconds(forHostTime: mach_absolute_time())
@@ -438,5 +453,73 @@ public final class AVSoundEngine: SoundEngine {
         }
         playerFreeAt[bestIndex] = now + duration
         return players[bestIndex]
+    }
+}
+
+// MARK: - Offline rendering
+
+extension AVSoundEngine {
+
+    /// Renders one keypress through the complete live chain — buffer cache,
+    /// EQ, dynamics and master volume — without touching audio hardware.
+    ///
+    /// `AVAudioEngine`'s manual rendering mode is what makes the dampening
+    /// chain genuinely testable. The graph under test is the same graph that
+    /// plays through the speakers, so the central claim of the app ("this
+    /// slider changes the sound, and is not a volume control") can be
+    /// measured instead of listened to.
+    ///
+    /// Not part of the app's own code paths: `start()` and this are mutually
+    /// exclusive, because an engine can be in manual rendering mode or
+    /// attached to a device, never both.
+    func renderOneShot(category: KeyCategory,
+                       settings: AppSettings,
+                       seconds: Double = 0.35) throws -> [Float] {
+        let sampleRate = processingFormat.sampleRate
+        let frameCount = AVAudioFrameCount(seconds * sampleRate)
+        let maximumFrames: AVAudioFrameCount = 4096
+
+        try queue.sync {
+            self.settings = settings.normalized()
+            buildGraph()
+            rebuildCacheIfNeeded(force: true)
+
+            // The output format drives the whole graph in this mode.
+            try engine.enableManualRenderingMode(
+                .offline, format: processingFormat, maximumFrameCount: maximumFrames)
+            engine.prepare()
+            try engine.start()
+            players.forEach { $0.play() }
+            running = true
+            applyLiveParameters()
+            performPlay(category: category)
+        }
+
+        guard
+            let scratch = AVAudioPCMBuffer(
+                pcmFormat: engine.manualRenderingFormat, frameCapacity: maximumFrames)
+        else {
+            throw SoundEngineError.outputUnavailable("Could not allocate a render buffer.")
+        }
+
+        var rendered: [Float] = []
+        rendered.reserveCapacity(Int(frameCount))
+
+        while rendered.count < Int(frameCount) {
+            let remaining = AVAudioFrameCount(Int(frameCount) - rendered.count)
+            let request = min(remaining, scratch.frameCapacity)
+            let status = try engine.renderOffline(request, to: scratch)
+            guard status == .success, scratch.frameLength > 0 else { break }
+            rendered.append(contentsOf: SamplePreparation.samples(from: scratch))
+        }
+
+        queue.sync {
+            players.forEach { $0.stop() }
+            engine.stop()
+            engine.disableManualRenderingMode()
+            running = false
+        }
+
+        return rendered
     }
 }

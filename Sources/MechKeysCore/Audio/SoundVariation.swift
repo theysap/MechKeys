@@ -42,8 +42,11 @@ public struct SoundVariation {
     public init() {}
 
     /// Chooses a variant index, avoiding an immediate repeat.
-    public mutating func nextIndex(count: Int, category: KeyCategory) -> Int {
-        guard count > 1 else { return 0 }
+    ///
+    /// At `amount` zero the slider reads "Identical", so it has to mean it:
+    /// the same sample every time, not merely the same level and pitch.
+    public mutating func nextIndex(count: Int, category: KeyCategory, amount: Double = 1) -> Int {
+        guard count > 1, amount > 0.0001 else { return 0 }
         var index = Int(rng.next() % UInt64(count))
         if index == lastIndices[category], count > 1 {
             // One re-roll only. Forcing a different sample every time would

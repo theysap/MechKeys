@@ -85,3 +85,51 @@ public final class DynamicsProcessor: AVAudioUnitEffect, @unchecked Sendable {
         self.overallGain = overallGain
     }
 }
+
+/// Apple's `AUPeakLimiter`, as the last thing in the chain.
+///
+/// Dampening deliberately adds gain: loudness compensation so that the muted
+/// end of the slider is comparable in level to the sharp end, plus a low-mid
+/// shelf that puts body back. Both are necessary, and together they can push a
+/// loud profile past full scale — measured at 1.007 on a Blue spacebar before
+/// this existed. A limiter is the honest fix; pre-emptively turning everything
+/// down to leave headroom would make the app quiet for the sake of a case that
+/// only occurs at the extremes.
+public final class PeakLimiter: AVAudioUnitEffect, @unchecked Sendable {
+
+    private enum Address: AUParameterAddress {
+        case attackTime = 0
+        case releaseTime = 1
+        case preGain = 2
+    }
+
+    private var parameters: [AUParameterAddress: AUParameter] = [:]
+
+    override public init() {
+        let description = AudioComponentDescription(
+            componentType: kAudioUnitType_Effect,
+            componentSubType: kAudioUnitSubType_PeakLimiter,
+            componentManufacturer: kAudioUnitManufacturer_Apple,
+            componentFlags: 0,
+            componentFlagsMask: 0
+        )
+        super.init(audioComponentDescription: description)
+
+        if let tree = auAudioUnit.parameterTree {
+            for parameter in tree.allParameters {
+                parameters[parameter.address] = parameter
+            }
+        }
+
+        // Fast enough to catch a keypress transient, short enough to have let
+        // go again before the next key lands.
+        set(.attackTime, 0.0008)
+        set(.releaseTime, 0.020)
+        set(.preGain, 0)
+    }
+
+    private func set(_ address: Address, _ value: Float) {
+        guard let parameter = parameters[address.rawValue] else { return }
+        parameter.setValue(value.clamped(to: parameter.minValue...parameter.maxValue), originator: nil)
+    }
+}
