@@ -14,7 +14,11 @@ import Foundation
 /// The callback is also the latency budget for the whole app, so it does the
 /// smallest possible amount of work: classify, check two rate limits, hand a
 /// six-case enum to the audio queue, return.
-public final class KeyboardMonitor {
+/// Every mutable member is guarded by `lock`, which is what makes the
+/// unchecked conformance sound. The compiler cannot see that invariant, and
+/// the Core Foundation types involved — `CFMachPort`, `CFRunLoop` — predate
+/// `Sendable` entirely.
+public final class KeyboardMonitor: @unchecked Sendable {
 
     /// Called for every keypress that survives filtering. Invoked on the
     /// monitor's own thread — never block in here.
@@ -88,19 +92,28 @@ public final class KeyboardMonitor {
             return false
         }
 
+        guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+            AppLog.keyboard.error("Could not create a run loop source for the event tap.")
+            return false
+        }
+
         eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        runLoopSource = source
 
         lock.lock(); running = true; lock.unlock()
 
         // The tap runs on its own thread with its own run loop. Servicing it
         // from the main run loop would put every keystroke behind whatever
         // SwiftUI happens to be doing.
+        // The tap and its run loop source are carried across to the new
+        // thread in a box: both are Core Foundation types from before
+        // `Sendable` existed, and this is the one hand-off.
+        let tapContext = TapContext(tap: tap, source: source)
         let thread = Thread { [weak self] in
-            guard let self, let source = self.runLoopSource else { return }
+            guard let self else { return }
             self.threadRunLoop = CFRunLoopGetCurrent()
-            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
-            CGEvent.tapEnable(tap: tap, enable: true)
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), tapContext.source, .commonModes)
+            CGEvent.tapEnable(tap: tapContext.tap, enable: true)
             while self.isRunning {
                 CFRunLoopRunInMode(.defaultMode, 0.25, false)
             }
@@ -202,6 +215,12 @@ public final class KeyboardMonitor {
         default: return false
         }
     }
+}
+
+/// Carries the tap across the thread boundary once, at start-up.
+private struct TapContext: @unchecked Sendable {
+    let tap: CFMachPort
+    let source: CFRunLoopSource
 }
 
 /// C callback for the event tap. Kept free of Swift runtime work.
