@@ -1,8 +1,9 @@
 # Sound asset licensing
 
 Every sound MechKeys ships is a recording of a real mechanical keyboard. All
-120 files live inside the app bundle; nothing is downloaded at runtime and the
-app makes no network requests.
+120 files live inside the app bundle. No sound is ever downloaded: the app's
+only network request is the update check, which fetches a newer copy of
+MechKeys and never an asset.
 
 ## What is bundled
 
@@ -21,6 +22,17 @@ app makes no network requests.
 The notice is bundled as `MechKeys.app/Contents/Resources/LICENSE-sounds.txt`,
 which is what the MIT licence requires. `assets/SOURCES.json` pins the exact
 pack identifiers, and `Tools/import_sounds.py` reproduces the conversion.
+
+## What the packs do and do not contain
+
+Each pack carries four recordings and no more: an ordinary key (five takes),
+the spacebar, Return and Delete. There is **no** recording of Command, Option,
+Control, Shift, Caps Lock, Tab or any function key — not under those names, not
+under their PC equivalents (Alt, Windows), not anywhere in the registry's
+`tplai` packs. `Tools/import_sounds.py` therefore derives Tab and the modifiers
+from the ordinary recording, pitched down a fraction, and the function keys
+draw from the ordinary pool unchanged. Worth knowing before going looking
+again.
 
 ## Which recording became which profile
 

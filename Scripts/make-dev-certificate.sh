@@ -15,6 +15,20 @@
 #   A certificate is stable. Sign with the same one every time and the grant
 #   keeps matching, so permission is granted once and then left alone.
 #
+# No password needed, and nothing is added to the System trust store. An
+# earlier version of this script did `sudo security add-trusted-cert`, on the
+# assumption that codesign would refuse an untrusted certificate. It does not:
+# it signs perfectly happily, `codesign --verify --deep --strict` passes, and
+# the designated requirement comes out as
+#
+#   identifier "com.mechkeys.app" and certificate root = H"…"
+#
+# which is exactly what the Accessibility grant is keyed to. Trust only
+# decides whether `security find-identity -v` lists the identity, and putting
+# a self-signed root into the System keychain is not a small thing to do for
+# cosmetics. `build-app.sh` looks the identity up without `-v` for the same
+# reason.
+#
 # This is for development only. Distribution needs a real Developer ID, which
 # `build-app.sh` uses instead whenever DEVELOPER_ID_APPLICATION is set.
 #
@@ -43,6 +57,17 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 
+# A real passphrase, thrown away at the end of this script.
+#
+# Not an empty one, which is the obvious thing to reach for and does not work:
+# OpenSSL and Apple's Security framework disagree about how an empty PKCS#12
+# password is encoded before the MAC is computed — an empty byte string on one
+# side, the two-byte UTF-16 terminator on the other. `security import` then
+# fails with "MAC verification failed during PKCS12 import (wrong password?)",
+# which points at exactly the wrong thing. Any non-empty password sidesteps it.
+PASSPHRASE="$(openssl rand -base64 18 | tr -d '\n/+=')"
+[ -n "${PASSPHRASE}" ] || die "Could not generate a passphrase."
+
 step "Generating a self-signed code-signing certificate"
 # codeSigning in extendedKeyUsage is what makes codesign willing to use it.
 openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
@@ -56,31 +81,26 @@ openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
 openssl pkcs12 -export -legacy \
     -out "${TMP}/identity.p12" \
     -inkey "${TMP}/key.pem" -in "${TMP}/cert.pem" \
-    -name "${NAME}" -passout pass: 2> /dev/null \
+    -name "${NAME}" -passout "pass:${PASSPHRASE}" 2> /dev/null \
     || die "openssl could not package the identity."
 
 step "Importing into the login keychain"
 # -A lets any tool use the key without a prompt per build. That is a deliberate
 # trade for a throwaway local signing key, and not something to do with a
 # Developer ID.
-security import "${TMP}/identity.p12" -k "${KEYCHAIN}" -P "" -A \
+security import "${TMP}/identity.p12" -k "${KEYCHAIN}" -P "${PASSPHRASE}" -A \
     || die "Could not import the identity into the keychain."
 
-step "Trusting it for code signing"
-note "macOS will ask for your password: it is changing keychain trust settings."
-# Without trust, codesign reports the identity as invalid and refuses it.
-if ! sudo security add-trusted-cert -d -r trustRoot \
-    -p codeSign -k /Library/Keychains/System.keychain "${TMP}/cert.pem" 2> /dev/null; then
-    note "Could not set trust automatically."
-    note "Open Keychain Access, find '${NAME}', and set Code Signing to Always Trust."
-fi
-
 echo
-if security find-identity -v -p codesigning | grep -q "${NAME}"; then
+# Deliberately not `-v`: that lists valid identities only, and a self-signed
+# certificate whose root nothing trusts is never valid. It is still perfectly
+# usable for signing — see the note at the top.
+if security find-identity -p codesigning | grep -q "${NAME}"; then
     step "Ready"
     echo "    ./Scripts/build-app.sh now signs with '${NAME}'."
     echo "    Grant Accessibility permission once; it will survive rebuilds."
+    echo
+    note "'CSSMERR_TP_NOT_TRUSTED' beside it is expected and does not matter."
 else
-    note "The identity is installed but not yet reported as valid."
-    note "Set Code Signing to Always Trust for '${NAME}' in Keychain Access."
+    die "The identity did not land in the keychain."
 fi

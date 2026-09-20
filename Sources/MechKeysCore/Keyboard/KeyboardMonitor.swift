@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 
@@ -104,7 +105,13 @@ public final class KeyboardMonitor: @unchecked Sendable {
             return false
         }
 
-        let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
+        // The third bit is `NX_SYSDEFINED`, which is how the brightness,
+        // media and volume keys arrive. Without it F1, F2 and F7 to F12 are
+        // silent, because they are never key-downs. See `KeyClassifier`.
+        let mask =
+            (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << KeyClassifier.systemDefinedEventType)
         let context = Unmanaged.passUnretained(self).toOpaque()
 
         guard
@@ -203,6 +210,40 @@ public final class KeyboardMonitor: @unchecked Sendable {
             isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
         }
 
+        emit(category: category, isRepeat: isRepeat)
+    }
+
+    /// Brightness, media and volume keys, which the hardware reports as
+    /// `NX_SYSDEFINED` rather than as key-downs.
+    ///
+    /// This is the one place the monitor allocates. `CGEvent` exposes no
+    /// field for a system-defined event's `data1`, and `NSEvent` is the only
+    /// public way to read it. It is not the hot path — these are the top-row
+    /// keys, pressed occasionally rather than while typing — and an ordinary
+    /// keystroke never reaches here.
+    ///
+    /// Nothing more than the six-case category escapes, exactly as with a
+    /// key-down: which media key it was is read, used to decide whether to
+    /// make a sound at all, and dropped.
+    fileprivate func handleSystemDefined(_ event: CGEvent) {
+        guard let nsEvent = NSEvent(cgEvent: event),
+            nsEvent.subtype.rawValue == KeyClassifier.auxControlSubtype
+        else { return }
+
+        // data1 packs the key in the high half and its state in the low half.
+        let data1 = nsEvent.data1
+        let auxKeyCode = Int32((data1 & 0xFFFF_0000) >> 16)
+        let keyFlags = data1 & 0x0000_FFFF
+
+        guard KeyClassifier.isAuxKeyPress(state: (keyFlags & 0xFF00) >> 8),
+            let category = KeyClassifier.auxCategory(forAuxKeyCode: auxKeyCode)
+        else { return }
+
+        emit(category: category, isRepeat: (keyFlags & 0x1) == 1)
+    }
+
+    /// Rate limiting and hand-off, shared by every kind of key event.
+    private func emit(category: KeyCategory, isRepeat: Bool) {
         lock.lock()
         let mode = repeatMode
         let interval = minimumInterval
@@ -270,7 +311,11 @@ private func keyboardMonitorCallback(
     case .keyDown, .flagsChanged:
         monitor.handle(type: type, event: event)
     default:
-        break
+        // `CGEventType` has no case for `NX_SYSDEFINED`, so it cannot be
+        // matched above. Its raw value still arrives intact.
+        if type.rawValue == KeyClassifier.systemDefinedEventType {
+            monitor.handleSystemDefined(event)
+        }
     }
 
     // The event is passed straight through, unmodified, always.

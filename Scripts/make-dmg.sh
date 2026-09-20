@@ -2,10 +2,11 @@
 #
 # Packages dist/MechKeys.app into a disk image.
 #
-# The window is deliberately plain: the app and a link to /Applications. No
-# background picture, because arranging one means driving Finder through Apple
-# events, which asks for automation permission and has no chance of working on
-# a build machine.
+# The window's background picture and icon layout are committed under
+# Scripts/dmg and simply copied in. Arranging them means driving Finder
+# through Apple events, which asks for automation permission and has no chance
+# of working on a build machine — so that is done once, by hand, with
+# Scripts/make-dmg-layout.sh.
 
 set -euo pipefail
 
@@ -33,11 +34,28 @@ step "Staging ${APP_NAME} ${VERSION}"
 cp -R "${APP}" "${STAGING}/"
 ln -s /Applications "${STAGING}/Applications"
 
+# The window: a background picture, and the layout Finder was driven into
+# once by Scripts/make-dmg-layout.sh. Both are committed, so no Finder and no
+# automation permission is needed here or on a build machine.
+for asset in Scripts/dmg/background.tiff Scripts/dmg/DS_Store; do
+    if [ ! -f "${asset}" ]; then
+        echo "${asset} not found. Run Scripts/make-dmg-layout.sh." >&2
+        exit 1
+    fi
+done
+mkdir "${STAGING}/.background"
+cp Scripts/dmg/background.tiff "${STAGING}/.background/"
+cp Scripts/dmg/DS_Store "${STAGING}/.DS_Store"
+
 step "Creating disk image"
 rm -f "${DMG}"
+# The volume name is fixed rather than versioned: the background is referenced
+# by an alias that embeds the name, and changing it breaks the picture.
+#
 # ULFO is LZFSE-compressed. `hdiutil create` warns that it is deprecated in
-# favour of `diskutil image create from`, but diskutil's copy silently drops
-# the window layout, so this stays until it does not.
+# favour of `diskutil image create from`, but diskutil's copy **silently
+# drops .DS_Store**, which is the window layout, so the image comes out
+# looking like a plain folder. This stays until diskutil can keep it.
 hdiutil create \
     -srcfolder "${STAGING}" \
     -volname "${APP_NAME}" \

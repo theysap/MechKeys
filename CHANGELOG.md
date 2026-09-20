@@ -3,6 +3,127 @@
 All notable changes to MechKeys are recorded here. Versions are the commit
 subjects, in `vX.Y.Z` form.
 
+## v0.10.0
+
+An in-app updater, the release signing it turns into a correctness
+requirement, and thirteen keys that never made a sound.
+
+### Added
+
+- **Check for Updates**, in the menu bar popover and in Configure → General.
+  MechKeys reads its own latest release tag from the GitHub API, and the
+  answer arrives in a floating Liquid Glass panel: *You're up to date*,
+  *Update available* with **Download & Restart**, or *Update failed* with
+  **Retry**. It is a panel rather than part of the popover because the popover
+  closes the instant anything else takes focus, so a check started from the
+  menu bar has nowhere in it to put a result.
+- **Installing an update in place.** The disk image is downloaded, checked
+  against the `SHA256SUMS.txt` published beside it — and discarded if they
+  disagree — then mounted, stripped of its quarantine flag, and swapped over
+  the running bundle. The relaunch waits for the old process to exit, because
+  two copies would mean two event taps and two sounds per keypress. The first
+  launch afterwards says which version landed.
+- **Automatic checking**, a few seconds after launch and every six hours,
+  silent unless it finds something. `Check for updates automatically` in
+  Configure → General turns it off, and with it off MechKeys makes no network
+  request at all unless asked.
+- **The running version** at the bottom of the popover. It is
+  `CFBundleShortVersionString`, written from `VERSION`, which is the release
+  tag — so what the menu bar says matches what GitHub lists.
+- **`Scripts/make-release-certificate.sh`**, which issues the stable
+  self-signed identity every release is signed with and prints the three
+  repository secrets the workflow reads. `build-app.sh` takes any identity
+  through `SIGNING_IDENTITY`, and the release workflow imports either that or
+  a Developer ID into a throwaway keychain.
+- **`--update-panel up-to-date|available|downloading|failed`** puts each
+  answer on screen without waiting for a release that happens to be newer or a
+  download that happens to fail, and `MECHKEYS_UPDATE_FEED` points the whole
+  path at a local server.
+- **A disk image window that looks like something.** A drawn background —
+  a graphite keyboard row hung from the top edge, one key struck, the app
+  icon's two sound arcs coming off it — with MechKeys and the Applications
+  folder arranged on an arrow between them. `Scripts/make-dmg-background.swift`
+  renders it at 1x and 2x, `Scripts/make-dmg-layout.sh` drives Finder once to
+  produce the window layout, and both results are committed, so `make-dmg.sh`
+  and the build machine never touch Finder or need automation permission.
+- **A CI guard against publishing an unsigned release.** A tagged build now
+  fails outright if neither a Developer ID nor a self-signed certificate is
+  configured, rather than quietly shipping an ad-hoc image that would take
+  away the keyboard access of everyone who updates to it.
+- 28 tests covering version comparison, the release feed, checksum parsing,
+  retry routing, the post-update announcement and the top-row keys. 86 in
+  total.
+
+### Fixed
+
+- **`MechKeys --diagnose` blamed the wrong thing.** Accessibility is granted
+  to the *responsible* process, and a binary exec'd from a shell is the
+  terminal's responsibility, not its own — so running the command in a
+  terminal reported whether the terminal had permission and concluded "no
+  access" about an app that was working. It now notices it was not launched
+  by launchd, says so, and stops issuing a verdict it cannot support.
+- **`Scripts/make-dev-certificate.sh` never worked**, so neither did the fix
+  it exists to apply. It packaged the identity with an empty PKCS#12
+  passphrase, and OpenSSL and Apple's Security framework encode an empty
+  password differently before computing the MAC — an empty byte string on one
+  side, the two-byte UTF-16 terminator on the other. `security import` failed
+  with "MAC verification failed during PKCS12 import (wrong password?)",
+  which points at the one thing that was not wrong. It now uses a random
+  passphrase, thrown away at the end of the script. It also no longer runs
+  `sudo security add-trusted-cert`: codesign signs perfectly well with an
+  untrusted self-signed certificate, and the designated requirement it
+  produces — `certificate root = H"…"` — is the stable one either way. Trust
+  only decided whether `security find-identity -v` listed the identity, so
+  `build-app.sh` looks it up without `-v` and nothing is added to the System
+  trust store. The script needs no password at all now.
+- **F1, F2 and F7 to F12 made no sound**, and the reason is not obvious: on
+  an Apple keyboard the brightness, media and volume keys are not key-downs
+  at all. The hardware reports them as `NX_SYSDEFINED` events, which a tap
+  asking for `keyDown` never sees — which is exactly why F3 to F6 worked and
+  the eight keys around them did not. The tap now asks for them too.
+  `CGEventType` has no case for that event, so the mask asks for it by number
+  and the callback matches it by raw value. Reading which key it was needs
+  `NSEvent`, because `CGEvent` exposes no field for `data1`; that is the only
+  allocation in the monitor, and an ordinary keystroke never reaches it. Caps
+  Lock and the power key are deliberately excluded — the first has an aux
+  code *and* a `flagsChanged` and would sound twice, and the second is Touch
+  ID on most Macs.
+- **Shift, Control, Option, Command and Caps Lock were silent** for a much
+  duller reason: modifier sounds were simply off by default. The default is
+  now on, with the switch still in Configure → Keys for anyone who finds them
+  tiring. Note that a changed default reaches **fresh installs only** —
+  settings written by an earlier build already carry
+  `playModifierSounds: false`, and decoding deliberately prefers a stored
+  value over a changed default. There is no migration, because a stored
+  `false` cannot be told apart from a deliberate one.
+- The top row draws from the ordinary sample pool. There is no recording of
+  its own to reach for — the upstream packs contain four recordings in total,
+  of an ordinary key, the spacebar, Return and Delete, and nothing under any
+  name for a modifier or a function key. `assets/LICENSES.md` records that, so
+  the next person does not go looking.
+
+### Changed
+
+- **The privacy claim is now precise rather than absolute.** README,
+  `TECHNICAL.md` §2 and the in-app privacy list said MechKeys made no network
+  requests of any kind, which the updater makes untrue. They now say what it
+  does request — one public releases document, and an image only when asked —
+  and that nothing is sent.
+- **Releases are signed with a stable identity, not ad-hoc.** This is not
+  cosmetic: macOS keys the Accessibility grant to the code signature, and an
+  updater that replaces the bundle would have revoked the user's keyboard
+  access on every update, silently, with the switch still on in System
+  Settings. An ad-hoc signature carries the binary's hash and changes every
+  build; a certificate-backed one does not. Self-signed is enough for this —
+  it does not remove the Gatekeeper wall, which only notarisation does, but
+  the two problems are separate and this is the half that can be fixed for
+  free. `TECHNICAL.md` §9.1 has the table.
+- **Modifier and function keys are described accurately** in the key-category
+  summaries and in the Configure → Keys footer, which until now told the user
+  that modifier sounds were off by default.
+- `CURRENT.md`, the working notes for the next session, is gitignored. It was
+  only ever untracked by habit.
+
 ## v0.2.0
 
 The application itself: menu bar, configuration window, onboarding, and a

@@ -1,7 +1,7 @@
 # Manual QA checklist
 
 Automated tests cover the settings model, key classification, the DSP, and the
-rendered output of the audio graph (`./Scripts/test.sh`, 58 tests). This file
+rendered output of the audio graph (`./Scripts/test.sh`, 86 tests). This file
 covers what they cannot: real keyboards, real audio devices, and the way the
 app behaves over hours rather than milliseconds.
 
@@ -55,6 +55,26 @@ Type in each and confirm sound:
 - [ ] Spotlight
 - [ ] A password field — macOS secure input disables the tap; confirm the app
       recovers afterwards rather than staying silent
+
+## Every key makes a sound
+
+The point of this section is the keys that are easy to miss. Run it on a
+laptop keyboard, where the top row is media keys by default.
+
+- [ ] Shift, Control, Option, Command, Caps Lock and fn all sound, left and right
+- [ ] A modifier sounds once when pressed, and not again when released
+- [ ] Holding Shift while typing does not re-sound the Shift
+- [ ] Caps Lock sounds going on *and* going off, exactly once each
+- [ ] **F1 and F2** (brightness) sound, and still change the brightness
+- [ ] **F7, F8, F9** (media) sound, and still control playback
+- [ ] **F10, F11, F12** (volume) sound, and still change the volume
+- [ ] F3, F4, F5, F6 sound
+- [ ] Holding F12 to ramp the volume does not machine-gun in Silent mode
+- [ ] Caps Lock does not sound twice
+- [ ] The power / Touch ID key does **not** sound
+- [ ] With "Use F1, F2, etc. as standard function keys" switched **on** in
+      System Settings, the whole top row still sounds
+- [ ] Turning "Play modifier sounds" off silences the modifiers and nothing else
 
 ## Key categories
 
@@ -120,6 +140,51 @@ Type in each and confirm sound:
 - [ ] VoiceOver reads the keyboard access status
 - [ ] Every control is reachable by keyboard
 
+## Diagnostics
+
+- [ ] `MechKeys --diagnose` run **from a terminal** prints the responsible-process
+      warning and does not claim "no access" outright
+- [ ] The same command, with the terminal granted Accessibility, agrees with
+      the popover
+
+## Updates
+
+Each answer can be put on screen without waiting for a real release:
+`dist/MechKeys.app/Contents/MacOS/MechKeys --update-panel up-to-date|available|downloading|failed`.
+The full path is exercised against a local server with `MECHKEYS_UPDATE_FEED`
+pointing at a `releases/latest` JSON document.
+
+- [ ] The version at the bottom of the popover matches `VERSION` and the tag
+- [ ] **Check for Updates…** opens the panel; the popover closes behind it
+- [ ] With no newer release: "You're up to date", naming the running version
+- [ ] With a newer release: the version is named, **Download & Restart** is offered
+- [ ] **Later** closes the panel and does not ask again until the next check
+- [ ] Offline: "Update failed", and **Retry** tries again rather than doing nothing
+- [ ] A corrupted image is refused on the checksum and reported, not installed
+- [ ] A real update replaces `/Applications/MechKeys.app` and restarts it
+- [ ] Exactly one MechKeys is running afterwards, and it is the new version
+- [ ] The panel confirms the new version on that first launch, once only
+- [ ] **Keyboard access is still granted after the update** — the whole point
+      of signing releases with a stable identity. Confirm with `--diagnose`
+- [ ] Settings survive the update
+- [ ] Escape closes the panel; Return presses the prominent button
+- [ ] Turning off "Check for updates automatically" stops the background check
+- [ ] The panel reads correctly in light and dark appearance
+
+## The disk image window
+
+`open dist/MechKeys-<version>.dmg` and look at it. Regenerate with
+`swift Scripts/make-dmg-background.swift`, `tiffutil`, then
+`./Scripts/make-dmg-layout.sh` — never by hand on a mounted image.
+
+- [ ] The background picture appears, not a plain white window
+- [ ] MechKeys is on the left, Applications on the right, on the drawn arrow
+- [ ] Both filenames are legible against the background
+- [ ] The picture is not cropped, and there is no scroll bar
+- [ ] The toolbar and sidebar are hidden
+- [ ] It is sharp on a Retina display — the @2x representation is being used
+- [ ] Dragging the app onto the folder installs it
+
 ## Install and distribution
 
 - [ ] `curl -fsSL https://theysap.com/install/mechkeys | bash` installs a working app
@@ -129,4 +194,7 @@ Type in each and confirm sound:
 - [ ] `MECHKEYS_VERSION` pins an older release
 - [ ] `MECHKEYS_NO_LAUNCH=1` skips the launch
 - [ ] A notarised build opens with no Gatekeeper warning
+- [ ] `codesign -dvv` on a release reports an `Authority`, never `Signature=adhoc`
+- [ ] Two consecutive releases report the same `certificate root` in
+      `codesign -d -r-`, which is what the Accessibility grant is pinned to
 - [ ] Launch at login actually launches it at login

@@ -6,8 +6,8 @@ import Observation
 ///
 /// ```
 ///   SettingsStore ──▶ MechKeysController ──▶ SoundEngine
-///                            │           └─▶ KeyboardMonitor
-///   PermissionManager ───────┘
+///                            │           ├─▶ KeyboardMonitor
+///   PermissionManager ───────┤           └─▶ UpdateChecker
 /// ```
 ///
 /// Nothing else in the app talks to the engine or the monitor directly: views
@@ -26,6 +26,8 @@ public final class MechKeysController {
 
     public let settingsStore: SettingsStore
     public let permissions: PermissionManager
+    /// Looks for newer releases. The app's only network code path.
+    public let updates: UpdateChecker
 
     public private(set) var engineStatus: EngineStatus = .idle
     public private(set) var isListening = false
@@ -47,10 +49,13 @@ public final class MechKeysController {
         settingsStore: SettingsStore? = nil,
         permissions: PermissionManager? = nil,
         engine: (any SoundEngine)? = nil,
-        monitor: KeyboardMonitor? = nil
+        monitor: KeyboardMonitor? = nil,
+        updates: UpdateChecker? = nil
     ) {
-        self.settingsStore = settingsStore ?? SettingsStore()
+        let store = settingsStore ?? SettingsStore()
+        self.settingsStore = store
         self.permissions = permissions ?? PermissionManager()
+        self.updates = updates ?? UpdateChecker(store: store)
         self.engine = engine ?? AVSoundEngine()
         self.monitor = monitor ?? KeyboardMonitor()
 
@@ -71,11 +76,16 @@ public final class MechKeysController {
         startEngineIfNeeded()
         apply(settingsStore.settings)
         startFollowing()
+        // Before the background schedule, so the version this launch replaced
+        // is read and rewritten exactly once.
+        updates.recordLaunch()
+        updates.start()
     }
 
     public func shutDown() {
         monitor.stop()
         engine.stop()
+        updates.stop()
         isListening = false
         engineStatus = .idle
     }

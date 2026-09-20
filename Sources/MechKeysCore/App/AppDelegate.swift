@@ -75,6 +75,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     public let controller = MechKeysController()
     private let windows = AppWindowController()
+    /// The update panel keeps its own window: it has to be able to appear over
+    /// the configuration window rather than replacing it.
+    private let updatePanel = UpdatePanelController()
 
     public override init() {
         super.init()
@@ -105,6 +108,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             showPopoverPreview()
             return
         }
+        if let state = Self.requestedUpdatePanel() {
+            showUpdatePanelPreview(state)
+            return
+        }
 
         // Reports what the app can actually see about its own access, and
         // exits. Diagnosing "I granted it and it still says no" from the
@@ -117,6 +124,36 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if !controller.settingsStore.settings.hasCompletedOnboarding {
             showOnboarding()
+        }
+
+        announceInstalledUpdate()
+        watchForBackgroundUpdates()
+    }
+
+    /// Confirms an update that has already replaced the app and restarted it.
+    ///
+    /// Also re-checks keyboard access, because the grant is keyed to the code
+    /// signature: if a release were ever signed with a different identity, the
+    /// tap would stop working silently, and the popover's banner should say so
+    /// rather than the app just going quiet.
+    private func announceInstalledUpdate() {
+        guard let version = controller.updates.installedVersion else { return }
+        controller.updates.installedVersion = nil
+        controller.verifyKeyboardAccess()
+        updatePanel.show(checker: controller.updates, mode: .installed(version))
+    }
+
+    /// Brings the panel up when a check nobody was watching finds something.
+    ///
+    /// A background check is silent until it has news; this is the one state
+    /// worth interrupting for, and only when the panel is not already showing
+    /// it.
+    private func watchForBackgroundUpdates() {
+        follow { [weak self] in
+            guard let self else { return }
+            guard case .available = self.controller.updates.state else { return }
+            guard !self.updatePanel.isVisible else { return }
+            self.updatePanel.show(checker: self.controller.updates, mode: .check)
         }
     }
 
@@ -138,9 +175,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     public func showConfiguration() {
         windows.show(
             title: "MechKeys",
-            content: ConfigurationView(controller: controller) { [weak self] in
-                self?.windows.close()
-            }
+            content: ConfigurationView(
+                controller: controller,
+                onClose: { [weak self] in self?.windows.close() },
+                onCheckForUpdates: { [weak self] in self?.checkForUpdates() }
+            )
         )
     }
 
@@ -149,8 +188,55 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         windows.show(
             title: "MechKeys",
             takesFocus: true,
-            content: MenuBarView(controller: controller).padding(.vertical, 4)
+            content: MenuBarView(
+                controller: controller,
+                onConfigure: { [weak self] in self?.showConfiguration() },
+                onCheckForUpdates: { [weak self] in self?.checkForUpdates() }
+            )
+            .padding(.vertical, 4)
         )
+    }
+
+    /// Opens the panel and looks for a newer release.
+    ///
+    /// The panel goes up first, in its "checking" state, so that the answer
+    /// arrives in something the user is already looking at — the popover this
+    /// was clicked in closes the moment the panel takes focus.
+    public func checkForUpdates() {
+        updatePanel.show(checker: controller.updates, mode: .check)
+        Task { await controller.updates.check(userInitiated: true) }
+    }
+
+    /// `--update-panel <state>`: puts one update answer on screen without
+    /// waiting for a real release. Used by the QA pass and to render the
+    /// images in the README.
+    private static func requestedUpdatePanel() -> UpdateChecker.State? {
+        guard let flag = CommandLine.arguments.firstIndex(of: "--update-panel") else { return nil }
+        let next = CommandLine.arguments.index(after: flag)
+        let name = next < CommandLine.arguments.endIndex ? CommandLine.arguments[next] : "available"
+
+        let release = AppRelease(
+            version: AppVersion(major: 1, minor: 0, patch: 0),
+            notes: "",
+            diskImage: URL(string: "https://example.invalid/MechKeys-1.0.0.dmg")!,
+            checksums: URL(string: "https://example.invalid/SHA256SUMS.txt")!
+        )
+
+        switch name {
+        case "up-to-date": return .upToDate
+        case "checking": return .checking
+        case "downloading": return .downloading(0.42)
+        case "failed":
+            return .failed(
+                UpdateChecker.Failure(
+                    message: "The Internet connection appears to be offline.", retry: .check))
+        default: return .available(release)
+        }
+    }
+
+    private func showUpdatePanelPreview(_ state: UpdateChecker.State) {
+        controller.updates.preview(state)
+        updatePanel.show(checker: controller.updates, mode: .check)
     }
 
     public func showOnboarding() {

@@ -16,4 +16,5 @@ enum AppLog {
     static let keyboard = Logger(subsystem: subsystem, category: "keyboard")
     static let library = Logger(subsystem: subsystem, category: "library")
     static let settings = Logger(subsystem: subsystem, category: "settings")
+    static let update = Logger(subsystem: subsystem, category: "update")
 }

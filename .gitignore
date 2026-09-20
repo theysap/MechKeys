@@ -6,3 +6,8 @@ dist/
 *.xcworkspace
 .swiftpm/
 DerivedData/
+# Written by the VS Code Swift extension, and personal to whoever is editing.
+.vscode/
+
+# Working notes for the next session, not part of the shipped documentation.
+CURRENT.md

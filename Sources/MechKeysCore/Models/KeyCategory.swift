@@ -28,12 +28,12 @@ public enum KeyCategory: String, CaseIterable, Codable, Identifiable, Hashable, 
 
     public var summary: String {
         switch self {
-        case .standard: return "Every ordinary key"
+        case .standard: return "Every ordinary key, and the top row"
         case .space: return "Deeper, stabilised"
         case .enter: return "Heavier mechanical body"
         case .backspace: return "Slightly deeper"
         case .tab: return "Normal, a touch deeper"
-        case .modifier: return "Shift, Control, Option, Command"
+        case .modifier: return "Shift, Control, Option, Command, Caps Lock, fn"
         }
     }
 

@@ -18,6 +18,7 @@ public struct MechKeysApp: App {
             MenuBarView(
                 controller: appDelegate.controller,
                 onConfigure: { appDelegate.showConfiguration() },
+                onCheckForUpdates: { appDelegate.checkForUpdates() },
                 onQuit: { NSApp.terminate(nil) }
             )
         } label: {

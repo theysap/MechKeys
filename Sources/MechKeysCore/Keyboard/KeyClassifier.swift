@@ -72,4 +72,65 @@ public enum KeyClassifier {
     public static func isModifier(_ keyCode: CGKeyCode) -> Bool {
         modifierKeyCodes.contains(keyCode)
     }
+
+    // MARK: - The keys that are not key-downs
+
+    /// `NX_SYSDEFINED`.
+    ///
+    /// On an Apple keyboard the brightness, media-transport and volume keys —
+    /// F1, F2 and F7 through F12 — are not key-downs at all. The hardware
+    /// reports them as system-defined events, so a tap that asks only for
+    /// `keyDown` never sees them and they make no sound, while F3 to F6
+    /// (Mission Control, Spotlight, Dictation, Focus) arrive as ordinary
+    /// key-downs and do.
+    ///
+    /// `CGEventType` has no case for 14, because a system-defined event is
+    /// not a Quartz event in the way a key-down is. The tap delivers it all
+    /// the same, if the mask asks for it.
+    public static let systemDefinedEventType: UInt32 = 14
+
+    /// `NX_SUBTYPE_AUX_CONTROL_BUTTONS`: the one system-defined subtype that
+    /// means a key was pressed. Everything else on that channel is not a key.
+    public static let auxControlSubtype: Int16 = 8
+
+    /// `NX_KEYTYPE_*` from `IOKit/hidsystem/ev_keymap.h`, for the aux keys
+    /// that are a physical key under a finger.
+    ///
+    /// Caps Lock is deliberately absent: it has a code here *and* arrives as
+    /// a `flagsChanged`, so honouring both would sound it twice. So is the
+    /// power key, which on most Macs is Touch ID and is not pressed to type.
+    static let audibleAuxKeyCodes: Set<Int32> = [
+        0,  // sound up          F12
+        1,  // sound down        F11
+        2,  // brightness up     F2
+        3,  // brightness down   F1
+        7,  // mute              F10
+        11,  // contrast up
+        12,  // contrast down
+        13,  // launch panel
+        14,  // eject
+        16,  // play/pause       F8
+        17,  // next             F9
+        18,  // previous         F7
+        19,  // fast forward
+        20,  // rewind
+        21,  // illumination up
+        22,  // illumination down
+        23,  // illumination toggle
+    ]
+
+    /// The category for an aux key, or nil for one that should stay silent.
+    ///
+    /// These are ordinary-sized keys in the top row, so they draw from the
+    /// ordinary pool. The sample library has no recording of its own for
+    /// them — the upstream packs carry four recordings in total, of an
+    /// ordinary key, the spacebar, Return and Delete — so there is nothing
+    /// more specific to reach for. See `assets/LICENSES.md`.
+    public static func auxCategory(forAuxKeyCode code: Int32) -> KeyCategory? {
+        audibleAuxKeyCodes.contains(code) ? .standard : nil
+    }
+
+    /// Whether a decoded aux key is being pressed rather than released.
+    /// `0x0A` is down, `0x0B` is up.
+    public static func isAuxKeyPress(state: Int) -> Bool { state == 0x0A }
 }

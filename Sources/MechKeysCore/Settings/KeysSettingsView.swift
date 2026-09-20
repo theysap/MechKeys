@@ -17,14 +17,16 @@ struct KeysSettingsView: View {
             Section {
                 Toggle("Play modifier sounds", isOn: $store.settings.playModifierSounds)
                     .accessibilityHint(
-                        "Whether pressing Shift, Control, Option or Command makes a sound.")
+                        "Whether pressing Shift, Control, Option, Command, Caps Lock or fn makes a sound."
+                    )
             } header: {
                 Text("Modifiers")
             } footer: {
                 Text(
                     """
-                    Off by default: modifiers fire constantly while you type, and \
-                    a sound on every one of them gets tiring quickly.
+                    On by default, because a real keyboard clicks when you press \
+                    Shift. They do fire constantly while you type, so turn this \
+                    off — or trim their level below — if it wears thin.
                     """
                 )
                 .font(.caption)

@@ -7,11 +7,17 @@ struct GeneralSettingsView: View {
     let controller: MechKeysController
     @Bindable var store: SettingsStore
     @Binding var showingResetConfirmation: Bool
+    var onCheckForUpdates: () -> Void
 
-    init(controller: MechKeysController, showingResetConfirmation: Binding<Bool>) {
+    init(
+        controller: MechKeysController,
+        showingResetConfirmation: Binding<Bool>,
+        onCheckForUpdates: @escaping () -> Void = {}
+    ) {
         self.controller = controller
         self._store = Bindable(wrappedValue: controller.settingsStore)
         self._showingResetConfirmation = showingResetConfirmation
+        self.onCheckForUpdates = onCheckForUpdates
     }
 
     private var permissions: PermissionManager { controller.permissions }
@@ -95,7 +101,27 @@ struct GeneralSettingsView: View {
             }
 
             Section {
-                LabeledContent("Version", value: AppInfo.versionDescription)
+                LabeledContent("Version") {
+                    HStack(spacing: 8) {
+                        Text(AppInfo.versionDescription)
+                            .foregroundStyle(.secondary)
+                        Button("Check for Updates…", action: onCheckForUpdates)
+                            .controlSize(.small)
+                            .accessibilityHint(
+                                "Looks for a newer release of MechKeys on GitHub.")
+                    }
+                }
+                .accessibilityLabel("Version")
+                .accessibilityValue(AppInfo.versionDescription)
+
+                Toggle(
+                    "Check for updates automatically",
+                    isOn: $store.settings.checksForUpdatesAutomatically
+                )
+                .accessibilityHint(
+                    "Looks for a newer release a few seconds after launch and every six hours. Nothing is downloaded until you ask for it."
+                )
+
                 LabeledContent("Sounds", value: "Recorded switches, bundled")
 
                 HStack(spacing: 10) {
@@ -173,7 +199,7 @@ struct GeneralSettingsView: View {
         "Key presses are classified into six categories and immediately discarded.",
         "No characters, key sequences or clipboard contents are read or stored.",
         "The event tap is listen-only and cannot alter or block your typing.",
-        "Everything runs locally. No network access, no analytics, no telemetry.",
+        "The one request MechKeys makes is to GitHub's public releases list, when it checks for an update. It sends nothing — no identifiers, no analytics, no telemetry.",
         "The event tap is torn down entirely whenever MechKeys is switched off.",
     ]
 }

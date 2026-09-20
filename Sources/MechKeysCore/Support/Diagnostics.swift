@@ -7,7 +7,21 @@ import Foundation
 /// Every value here is read from inside the running app, because that is the
 /// only place the answers are true: TCC decides per process, by code
 /// signature, and nothing outside the process can see what it was told.
+///
+/// With one large caveat, which this report has to say out loud. TCC answers
+/// for the **responsible process**, not always the asking one, and a binary
+/// exec'd from a shell is the terminal's responsibility rather than its own.
+/// So `MechKeys --diagnose` typed into a terminal reports whether *the
+/// terminal* has Accessibility — and cheerfully concludes "no access" about
+/// an app that is working perfectly. See `launchedByLaunchd`.
 public enum Diagnostics {
+
+    /// Whether this process was started by the system rather than by a shell.
+    ///
+    /// A GUI launch is re-parented to launchd, so `getppid() == 1`. Anything
+    /// else means something launched us and TCC is very likely answering
+    /// about that something instead.
+    static var launchedByLaunchd: Bool { getppid() == 1 }
 
     public static func report() -> String {
         let bundle = Bundle.main
@@ -27,7 +41,26 @@ public enum Diagnostics {
         let canTap = KeyboardMonitor.canCreateTap()
         lines.append("AXIsProcessTrusted:   \(trusted)")
         lines.append("can create event tap: \(canTap)")
+        lines.append("launched by launchd:  \(launchedByLaunchd)")
         lines.append("")
+
+        // Said before the verdict, because it decides whether the verdict
+        // means anything at all.
+        if !launchedByLaunchd && !canTap {
+            lines.append(
+                """
+                WARNING: this copy was started from a shell, not by macOS, so the two \
+                answers above are probably not about MechKeys. Accessibility is granted \
+                to the *responsible* process, and for a binary run from a terminal that \
+                is the terminal. Expect "no access" here even when the app in your menu \
+                bar is working.
+
+                To diagnose the real thing: open MechKeys normally and look at Keyboard \
+                Access in the popover, or grant your terminal Accessibility too if you \
+                want this command to answer for itself.
+                """)
+            lines.append("")
+        }
 
         switch (trusted, canTap) {
         case (true, true):
@@ -44,6 +77,12 @@ public enum Diagnostics {
                 """
                 VERDICT: trusted but cannot create a tap. Something else is holding \
                 the tap, or the session is restricted.
+                """)
+        case (false, false) where !launchedByLaunchd:
+            lines.append(
+                """
+                VERDICT: no access *for this process*, which given the warning above \
+                says nothing either way about the app itself.
                 """)
         case (false, false):
             lines.append(

@@ -36,7 +36,7 @@ run.
 ## 1. The keyboard path
 
 ```
-key down
+key down / flags changed / system defined
    │
    ▼
 CGEventTap (.listenOnly, .cgSessionEventTap)   ← own thread, own run loop
@@ -54,14 +54,39 @@ KeyEvent { category, isRepeat, timestamp }
 audio queue (DispatchQueue, .userInteractive)  ← the callback has already returned
 ```
 
-### 1.1 Why a thread of its own
+### 1.1 Three kinds of event, because three kinds arrive
+
+A tap that asks only for `keyDown` hears most of a keyboard and not all of it:
+
+| Event | Keys |
+|---|---|
+| `keyDown` | letters, digits, punctuation, arrows, Escape, Tab, Return, Delete, space, and F3–F6 (Mission Control, Spotlight, Dictation, Focus) |
+| `flagsChanged` | Shift, Control, Option, Command, Caps Lock, fn — these *only* ever arrive this way, and twice: once pressed, once released |
+| `NX_SYSDEFINED` | brightness, media transport and volume — **F1, F2 and F7–F12 on an Apple keyboard** |
+
+The third is easy to miss, and was: those eight keys made no sound at all,
+while the four beside them did. The hardware does not report them as key
+presses. `CGEventType` has no case for `NX_SYSDEFINED` (14) either, so it
+cannot be matched in a `switch` — the raw value still arrives intact, and the
+mask has to ask for it by number.
+
+Reading which aux key it was needs the event's `data1`, and `CGEvent` exposes
+no field for it, so that one path converts to `NSEvent`. It is the only
+allocation in the monitor, and it is not on the hot path: an ordinary
+keystroke never reaches it.
+
+Two aux keys are deliberately ignored. Caps Lock has an aux code *and* a
+`flagsChanged`, so honouring both would sound it twice; and the power key is
+Touch ID on most Macs, which nobody presses to type.
+
+### 1.2 Why a thread of its own
 
 The tap's run loop source runs on a `Thread` at `.userInteractive`, not on the
 main run loop. Servicing it from the main run loop would put every keystroke
 behind whatever SwiftUI happened to be doing — and macOS *disables* a tap whose
 callback takes too long, so a slow path is not merely laggy, it is fatal.
 
-### 1.2 What the callback is allowed to do
+### 1.3 What the callback is allowed to do
 
 Classify, check two rate limits, hand over a six-case enum, return. No
 allocation, no I/O, no audio work, no locks held across anything slow. `play`
@@ -71,7 +96,7 @@ The one lock is an `NSLock` around three settings values the callback reads.
 Uncontended, so on the order of tens of nanoseconds; it exists because those
 values are written from the main thread.
 
-### 1.3 Classification is layout-independent
+### 1.4 Classification is layout-independent
 
 The keycodes are the Carbon `kVK_*` constants. They describe the *physical*
 key, not the character it produces — keycode 49 is the spacebar on QWERTY,
@@ -83,7 +108,7 @@ the press should sound, so the event's flags are checked for that modifier's
 bit. Caps Lock is special-cased: it latches rather than holds, so both the on
 and the off press are real presses of a real key.
 
-### 1.4 Rate limiting
+### 1.5 Rate limiting
 
 Two separate guards, because they answer different questions:
 
@@ -97,7 +122,7 @@ Two separate guards, because they answer different questions:
 `everyRepeat` deliberately skips the floor, because that is what the setting
 means.
 
-### 1.5 Recovering from a disabled tap
+### 1.6 Recovering from a disabled tap
 
 macOS disables a tap that is too slow, and during secure input — any password
 field. Both arrive as `tapDisabledByTimeout` / `tapDisabledByUserInput`, and
@@ -118,10 +143,19 @@ On top of that:
 
 - The tap is `.listenOnly`. That is enforced by the kernel, not by us: a
   listen-only tap cannot modify, drop or inject events even if the code tried.
+- The tap also sees `flagsChanged` and `NX_SYSDEFINED` (§1.1). The same rule
+  holds for both: which modifier, or which media key, is read to decide
+  whether to make a sound and then discarded. Neither is stored, and neither
+  can reach the audio side, which is typed in `KeyCategory`.
 - Nothing is written to disk except one `UserDefaults` key holding the
   settings.
-- The app makes **no network requests at all**. Not for updates, not for
-  analytics, not for anything. There is no code path that opens a socket.
+- The app makes exactly **one kind of network request**: a `GET` to GitHub's
+  public releases API when it checks for an update, and — only if the user
+  presses Download & Restart — the disk image and checksums that release
+  publishes. Nothing is sent: no identifiers, no version report, no analytics,
+  no account. `Sources/MechKeysCore/Update/` is the whole of it, and it is the
+  only code in the project that opens a socket. Turning off "Check for updates
+  automatically" means nothing is requested at all unless the user asks.
 - Switching MechKeys off calls `stop()` on the monitor, which disables the tap,
   removes its run loop source and lets the thread exit. Off means the tap is
   gone, not muted.
@@ -166,10 +200,25 @@ exists, while the build you just made is refused. The app says it has no
 permission; the system says it was granted. Both are telling the truth about
 different binaries.
 
-Any *stable* identity fixes it. `Scripts/make-dev-certificate.sh` creates a
-self-signed code-signing certificate once, and `build-app.sh` picks it up
-automatically, so permission is granted once and then left alone across
-rebuilds. A Developer ID does the same for distribution builds.
+Any *stable* identity fixes it, because the designated requirement changes
+shape:
+
+```
+ad-hoc:  identifier "com.mechkeys.app" and cdhash H"…"            ← new every build
+signed:  identifier "com.mechkeys.app" and certificate root = H"…"  ← per certificate
+```
+
+`Scripts/make-dev-certificate.sh` creates a self-signed code-signing
+certificate once, and `build-app.sh` picks it up automatically, so permission
+is granted once and then left alone across rebuilds. A Developer ID does the
+same for distribution builds, and `Scripts/make-release-certificate.sh` does it
+for CI without one.
+
+**This is why releases cannot be ad-hoc signed.** The updater (§9.3) replaces
+the bundle in place, so an ad-hoc release would revoke the user's keyboard
+access on every single update, silently and with the switch still on in System
+Settings. A stable release identity is a prerequisite for shipping an updater
+at all, not a nicety.
 
 To clear a grant that is pointing at a build that is gone:
 
@@ -183,6 +232,16 @@ tccutil reset Accessibility com.mechkeys.app
 identity, its code signature, `AXIsProcessTrusted`, and whether an event tap
 can actually be created. Nothing outside the process can answer those
 questions, because TCC decides per process and per signature.
+
+**Read it with one caveat, which the report now states itself.** TCC answers
+for the *responsible* process, and a binary exec'd from a shell is the
+terminal's responsibility rather than its own. So typing
+`MechKeys --diagnose` into a terminal reports whether **the terminal** has
+Accessibility, and will say "no access" about an app that is working
+perfectly — the exact confusion the command exists to dispel. A GUI launch is
+re-parented to launchd, so `getppid() == 1` distinguishes the two cases, and
+the report warns and softens its verdict when it is not the responsible
+process. To check the real thing, look at Keyboard Access in the popover.
 
 ### 3.4 Detecting the grant
 
@@ -452,11 +511,39 @@ possible.
 
 The project is a Swift package, not an Xcode project, and
 `Scripts/build-app.sh` assembles the bundle by hand: copy the binary, bundle
-the 150 samples into `Contents/Resources/Sounds`, render `AppIcon.icns` from
+the 120 samples into `Contents/Resources/Sounds`, render `AppIcon.icns` from
 `Scripts/make-icon.swift`, write `Info.plist` with `LSUIElement`, sign with the
 hardened runtime.
 
 `Scripts/make-dmg.sh` packages it, optionally signs and notarises.
+
+The disk image window — the background picture and where the two icons sit —
+is **committed, not built**. Arranging a Finder window means driving Finder
+through Apple events, which asks for automation permission and has no chance
+of working on a build machine. So it is done once, by hand:
+
+```sh
+swift Scripts/make-dmg-background.swift
+(cd Scripts/dmg && tiffutil -cathidpicheck background.png background@2x.png -out background.tiff)
+./Scripts/build-app.sh
+./Scripts/make-dmg-layout.sh      # drives Finder, writes Scripts/dmg/DS_Store
+```
+
+`make-dmg.sh` then copies `background.tiff` and `DS_Store` into every image
+and never goes near Finder. Three things about this are easy to get wrong:
+
+- **The volume name is fixed, not versioned.** `.DS_Store` refers to the
+  background through an alias that embeds the volume name
+  (`MechKeys:.background:background.tiff`), so a versioned volume would break
+  the picture.
+- **`hdiutil`, not `diskutil`.** `hdiutil create` warns that it is deprecated
+  in favour of `diskutil image create from`, but diskutil silently drops
+  `.DS_Store` — which *is* the window layout — and the image comes out looking
+  like a plain folder.
+- **The background is light on purpose.** Finder's icon view exposes text
+  size, label position, a background picture and a background colour, and no
+  text *colour* at all. The labels are a fixed dark grey, so a dark background
+  would make both filenames nearly invisible.
 
 ### 9.1 Distribution, and the Gatekeeper wall
 
@@ -492,7 +579,79 @@ and deleted afterwards. `security set-key-partition-list` is not optional —
 without it `codesign` stops to ask for permission and the job hangs until it
 times out.
 
-### 9.2 Releases
+**Without a Developer ID**, the Gatekeeper wall and the permission problem come
+apart, and only the second one has a free fix:
+
+| | First launch of a download | Accessibility after an update |
+|---|---|---|
+| Ad-hoc | Blocked, "Apple could not verify…" | **Lost, every time** |
+| Self-signed, stable | Blocked, the same way | Survives |
+| Developer ID + notarised | Opens normally | Survives |
+
+`Scripts/make-release-certificate.sh` produces the middle row: a self-signed
+certificate valid for twenty years, packaged as a `.p12`, printed as the three
+secrets the workflow reads — `SELF_SIGNED_IDENTITY`,
+`SELF_SIGNED_CERTIFICATE_P12` and `SELF_SIGNED_CERTIFICATE_PASSWORD`. It is
+used only when there is no Developer ID.
+
+Two things about it are worth knowing. `codesign` will happily sign with a
+certificate whose root nothing trusts, so no trust settings are needed on the
+runner — but `security find-identity -v` lists *valid* identities only and will
+not show it, which is why the workflow hands `build-app.sh` the identity name
+through `SIGNING_IDENTITY` rather than letting it search. And re-issuing that
+certificate produces a new leaf, which every existing user would have to grant
+Accessibility against again: it is a long-lived secret, and losing it is not a
+small thing.
+
+### 9.2 Updating in place
+
+`Sources/MechKeysCore/Update/` reads the latest release from the GitHub API,
+compares its tag against `CFBundleShortVersionString` — the same string
+`build-app.sh` writes out of `VERSION` — and, when the user asks, downloads the
+disk image, verifies it against the `SHA256SUMS.txt` published beside it,
+mounts it, and replaces the running bundle with `replaceItemAt`.
+
+Decisions worth recording:
+
+- **Versions are compared numerically, not as text.** `0.10.0` sorts before
+  `0.9.0` as a string, which is exactly the comparison this project needs next.
+- **A release with no checksums is not offered.** The app is not notarised, so
+  there is no ticket and no Developer ID for macOS to check on its behalf. What
+  can be checked is that the image came over HTTPS from the release and hashes
+  to the digest published with it, and an image that does not is discarded
+  rather than installed.
+- **Drafts, pre-releases and non-version tags are skipped.**
+- **A repository with no releases answers 404**, which is reported as "up to
+  date" rather than as a failure.
+- **The versioned image is preferred** over the fixed-name `MechKeys.dmg`,
+  although the two are byte-identical: the versioned name is the one that says
+  which release it came from, in the log and in the checksum lookup.
+- **Quarantine is stripped from the staged copy** before it goes into place.
+  Everything out of a downloaded image carries it, and the replaced app would
+  be refused on relaunch.
+- **The relaunch waits for this process to exit.** Two MechKeys would mean two
+  event taps and two sounds per keypress, and the new copy cannot take the tap
+  while the old one holds it.
+- **The download is a `URLSessionDownloadTask`, not `URLSession.bytes`.** The
+  latter means iterating the image one byte at a time and holding all of it in
+  memory to no purpose.
+- **What just happened is recorded, not remembered.** The bundle is replaced
+  and restarted, so nothing survives in memory; the version each launch ran as
+  is written to `UserDefaults`, and a launch that finds a newer one announces
+  the update. That key is deliberately *not* part of `AppSettings`, which
+  "Revert Changes" snapshots and restores.
+
+The answer appears in a floating Liquid Glass panel rather than in the popover,
+because the popover closes the moment anything else takes focus — including the
+panel. A check started from the menu bar has nowhere in the popover to put its
+result.
+
+`--update-panel up-to-date|available|downloading|failed` puts each answer on
+screen without waiting for a release that happens to be newer or a download
+that happens to fail. `MECHKEYS_UPDATE_FEED` points the whole path — check,
+download, verify, install, relaunch — at a local server.
+
+### 9.3 Releases
 
 Tagged `vX.Y.Z`. The workflow checks the tag matches `VERSION`, runs the tests,
 builds, signs, notarises, and publishes the versioned image plus a fixed-name
@@ -505,7 +664,7 @@ the file that was published, and nothing about who published it.
 
 ## 10. Testing without a speaker
 
-58 tests in 9 suites, none of which need audio hardware.
+86 tests in 15 suites, none of which need audio hardware.
 
 The interesting ones are `DampeningRenderTests`, which drive the **real**
 `AVAudioEngine` graph — the same nodes, the same parameters, the same buffer

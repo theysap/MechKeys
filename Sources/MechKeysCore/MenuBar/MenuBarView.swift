@@ -30,6 +30,7 @@ public struct MenuBarView: View {
     @Bindable var store: SettingsStore
 
     public var onConfigure: () -> Void
+    public var onCheckForUpdates: () -> Void
     public var onQuit: () -> Void
 
     private var permissions: PermissionManager { controller.permissions }
@@ -37,11 +38,13 @@ public struct MenuBarView: View {
     public init(
         controller: MechKeysController,
         onConfigure: @escaping () -> Void = {},
+        onCheckForUpdates: @escaping () -> Void = {},
         onQuit: @escaping () -> Void = {}
     ) {
         self.controller = controller
         self._store = Bindable(wrappedValue: controller.settingsStore)
         self.onConfigure = onConfigure
+        self.onCheckForUpdates = onCheckForUpdates
         self.onQuit = onQuit
     }
 
@@ -219,8 +222,19 @@ public struct MenuBarView: View {
 
             Divider()
 
+            menuButton("Check for Updates…", shortcut: nil, action: onCheckForUpdates)
             menuButton("Configure…", shortcut: ",", action: onConfigure)
             menuButton("Quit MechKeys", shortcut: "Q", action: onQuit)
+
+            // The released version, which is the tag it was published under.
+            // Last, and quiet: it is here to be read when someone goes looking
+            // for it, not to compete with the controls above.
+            Text("MechKeys \(AppInfo.versionDescription)")
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 2)
+                .accessibilityLabel("Version \(AppInfo.versionDescription)")
         }
     }
 

@@ -104,6 +104,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     public var hasCompletedOnboarding: Bool
     public var showsMenuBarStateInIcon: Bool
+    /// Whether MechKeys looks for a newer release on its own. The check is one
+    /// request to GitHub's public releases API and sends nothing; when this is
+    /// off, no request is ever made unless the user asks for one.
+    public var checksForUpdatesAutomatically: Bool
 
     // MARK: Ranges
 
@@ -123,7 +127,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         usesAdvancedDampening: false,
         advancedDampening: DampeningCurve.parameters(for: 0.35),
         makeupGainOffsetDB: 0,
-        playModifierSounds: false,
+        playModifierSounds: true,
         categorySettings: Self.defaultCategorySettings,
         variationAmount: 0.6,
         pitchVariationEnabled: true,
@@ -131,7 +135,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         minimumKeyInterval: 0.022,
         maximumVoices: 16,
         hasCompletedOnboarding: false,
-        showsMenuBarStateInIcon: true
+        showsMenuBarStateInIcon: true,
+        checksForUpdatesAutomatically: true
     )
 
     public static var defaultCategorySettings: [KeyCategory: KeyCategorySettings] {
@@ -154,7 +159,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         minimumKeyInterval: Double,
         maximumVoices: Int,
         hasCompletedOnboarding: Bool,
-        showsMenuBarStateInIcon: Bool
+        showsMenuBarStateInIcon: Bool,
+        checksForUpdatesAutomatically: Bool
     ) {
         self.isEnabled = isEnabled
         self.profile = profile
@@ -172,6 +178,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.maximumVoices = maximumVoices
         self.hasCompletedOnboarding = hasCompletedOnboarding
         self.showsMenuBarStateInIcon = showsMenuBarStateInIcon
+        self.checksForUpdatesAutomatically = checksForUpdatesAutomatically
     }
 
     /// Decoding tolerates a settings file written by an older build: anything
@@ -199,6 +206,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         maximumVoices = value(.maximumVoices, fallback.maximumVoices)
         hasCompletedOnboarding = value(.hasCompletedOnboarding, fallback.hasCompletedOnboarding)
         showsMenuBarStateInIcon = value(.showsMenuBarStateInIcon, fallback.showsMenuBarStateInIcon)
+        checksForUpdatesAutomatically = value(
+            .checksForUpdatesAutomatically, fallback.checksForUpdatesAutomatically)
         self = self.normalized()
     }
 

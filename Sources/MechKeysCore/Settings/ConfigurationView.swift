@@ -12,6 +12,7 @@ public struct ConfigurationView: View {
     @Bindable var store: SettingsStore
 
     public var onClose: () -> Void
+    public var onCheckForUpdates: () -> Void
 
     @StateObject private var selectedTab = ViewState(Tab.sound)
     @StateObject private var showingReset = ViewState(false)
@@ -40,10 +41,15 @@ public struct ConfigurationView: View {
         }
     }
 
-    public init(controller: MechKeysController, onClose: @escaping () -> Void = {}) {
+    public init(
+        controller: MechKeysController,
+        onClose: @escaping () -> Void = {},
+        onCheckForUpdates: @escaping () -> Void = {}
+    ) {
         self.controller = controller
         self._store = Bindable(wrappedValue: controller.settingsStore)
         self.onClose = onClose
+        self.onCheckForUpdates = onCheckForUpdates
     }
 
     public var body: some View {
@@ -63,7 +69,8 @@ public struct ConfigurationView: View {
 
                 GeneralSettingsView(
                     controller: controller,
-                    showingResetConfirmation: $showingReset.value
+                    showingResetConfirmation: $showingReset.value,
+                    onCheckForUpdates: onCheckForUpdates
                 )
                 .tabItem { Label(Tab.general.title, systemImage: Tab.general.symbol) }
                 .tag(Tab.general)

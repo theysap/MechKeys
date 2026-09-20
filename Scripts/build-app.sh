@@ -4,13 +4,20 @@
 #
 # The bundle is assembled by hand rather than by Xcode: the project is a Swift
 # package, and the one thing the app needs at runtime beyond its binary — the
-# sound library — is copied into Contents/Resources here. Everything ships
-# inside the bundle; the app never downloads anything.
+# sound library — is copied into Contents/Resources here. Everything the app
+# needs to run ships inside the bundle; the only thing it ever downloads is a
+# newer copy of itself, and only when the user asks for one.
 #
-# Signing:
-#   Set DEVELOPER_ID_APPLICATION to a Developer ID identity to sign properly.
-#   Without it the bundle is signed ad-hoc, which runs, but see the note on
-#   Accessibility permission below.
+# Signing, in order of preference:
+#   DEVELOPER_ID_APPLICATION  a real Developer ID. Notarisable, no Gatekeeper
+#                             wall, and stable across releases.
+#   SIGNING_IDENTITY          any other identity already in a keychain. The
+#                             release workflow sets this to the self-signed
+#                             release certificate.
+#   "MechKeys Development"    a local identity, if Scripts/make-dev-certificate.sh
+#                             has been run.
+#   ad-hoc                    the fallback, and the one that breaks the
+#                             Accessibility grant on every rebuild. See below.
 
 set -euo pipefail
 
@@ -124,10 +131,24 @@ if [ -n "${DEVELOPER_ID_APPLICATION:-}" ]; then
     # Notarisation refuses anything without a secure timestamp. An ad-hoc
     # signature cannot carry one at all.
     TIMESTAMP="--timestamp"
-    note "identity: ${IDENTITY}"
-elif security find-identity -v -p codesigning 2> /dev/null | grep -q "${DEV_CERT}"; then
+    note "identity: ${IDENTITY} (Developer ID)"
+elif [ -n "${SIGNING_IDENTITY:-}" ]; then
+    # The self-signed release identity, imported into a throwaway keychain by
+    # the release workflow. codesign is happy to use a certificate whose root
+    # nothing trusts — the signature it produces is still stable, which is the
+    # property the Accessibility grant and therefore the updater depend on.
+    # Gatekeeper is a separate problem and this does not solve it.
+    IDENTITY="${SIGNING_IDENTITY}"
+    TIMESTAMP="--timestamp=none"
+    note "identity: ${IDENTITY} (self-signed release)"
+elif security find-identity -p codesigning 2> /dev/null | grep -q "${DEV_CERT}"; then
     # A stable local identity, so the Accessibility grant survives a rebuild.
     # See Scripts/make-dev-certificate.sh for why that matters.
+    #
+    # Deliberately not `-v`. That lists *valid* identities only, and a
+    # self-signed certificate is never valid — nothing trusts its root. It
+    # signs regardless, which is all this needs; trusting it would mean
+    # putting a self-signed root into the System keychain for no gain.
     IDENTITY="${DEV_CERT}"
     TIMESTAMP="--timestamp=none"
     note "identity: ${DEV_CERT} (local development)"
@@ -149,10 +170,18 @@ codesign --verify --deep --strict "${APP}"
 # changes on every build, so every rebuild looks like a different application
 # and the permission has to be granted again — the switch stays on in System
 # Settings, pointing at a build that no longer exists. Any stable identity
-# avoids this.
+# avoids this, because the designated requirement then names the certificate
+# rather than the binary's hash:
+#
+#   ad-hoc:  identifier "com.mechkeys.app" and cdhash H"…"   ← new every build
+#   signed:  identifier "com.mechkeys.app" and certificate root = H"…"
+#
+# That difference is also what makes the in-app updater safe to ship: it
+# replaces the bundle in place, and only the second form survives it.
 if [ "${IDENTITY}" = "-" ]; then
-    note "ad-hoc signed: Accessibility permission will NOT survive a rebuild."
-    note "run ./Scripts/make-dev-certificate.sh once to fix that."
+    note "ad-hoc signed: Accessibility permission will NOT survive a rebuild,"
+    note "and would not survive an in-app update either."
+    note "run ./Scripts/make-dev-certificate.sh once to fix that locally."
 fi
 
 step "Built ${APP}"

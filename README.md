@@ -71,8 +71,15 @@ are easy to make and easy to quietly break.
 ### Different keys, different sounds
 
 The spacebar is pitched down and rattles like a stabilised key. Return is
-heavier, Delete and Tab sit in between. Modifiers are silent by default —
-they fire constantly while you type, and a sound on every one gets tiring fast.
+heavier, Delete and Tab sit in between. Shift, Control, Option, Command, Caps
+Lock and fn sound too, a little deeper than a letter — they fire constantly
+while you type, so if that wears thin there is a switch for them in
+Configure → Keys.
+
+**Every key on the keyboard makes a sound**, including the top row. The
+brightness, media and volume keys — F1, F2 and F7 to F12 on an Apple
+keyboard — take some finding, because macOS does not report them as key
+presses at all; they draw from the ordinary pool, like the rest of the top row.
 
 Each category has its own level and pitch trim, and can be switched off
 entirely.
@@ -119,6 +126,23 @@ into Applications. Every release also publishes the same image under a fixed
 name, so [`releases/latest/download/MechKeys.dmg`](../../releases/latest/download/MechKeys.dmg)
 is always the newest build.
 
+### Updating
+
+MechKeys checks for a newer release a few seconds after launch and every six
+hours after that, and tells you only when there is one. **Check for Updates…**
+in the menu bar asks on demand, and the version you are running is at the
+bottom of the popover — it is the release tag, so it lines up with
+[Releases](../../releases).
+
+Pressing **Download & Restart** downloads the disk image, checks it against the
+`SHA256SUMS.txt` published with the release, refuses it if they disagree, puts
+it in place of the running copy and restarts. Your settings and your
+Accessibility permission both survive: every release is signed with the same
+identity, which is what macOS keys that permission to.
+
+Turn the automatic check off in **Configure → General** if you would rather it
+never reached the network on its own.
+
 ### That first launch is blocked. Here is how to get past it
 
 A `.dmg` downloaded in a browser carries the quarantine flag, so macOS will
@@ -128,11 +152,15 @@ buttons are **Done** and **Move to Bin**.
 
 That wording is alarming and the dialog offers no way forward, so to be plain
 about what it means: macOS is not reporting that it found anything. It is
-reporting that it cannot tell who built the app. MechKeys is **ad-hoc signed
-and not notarised**, because notarising requires a paid Apple Developer ID.
-`codesign -dvv` reports `Signature=adhoc` with no authority, and `spctl -a`
-returns `rejected` — so Gatekeeper refuses, exactly as designed. The
-Control-click → Open shortcut that used to bypass this was removed in macOS 15.
+reporting that it cannot tell who built the app. MechKeys is **signed, but not
+notarised**, because notarising requires a paid Apple Developer ID. The
+signature is self-issued, so `spctl -a` returns `rejected` and Gatekeeper
+refuses, exactly as designed. The Control-click → Open shortcut that used to
+bypass this was removed in macOS 15.
+
+The signature is not pointless, though: it is the *same* signature in every
+release, which is what lets an update keep your Accessibility permission
+instead of quietly taking it away.
 
 **To open it, once:**
 
@@ -156,11 +184,11 @@ install with the `curl` line above.
 Only one thing removes that dialog, and it is **notarisation** — which needs a
 paid Apple Developer Program membership. Signing alone does not do it:
 
-| | First launch of a downloaded copy |
-|---|---|
-| Ad-hoc signed — **what is published today** | Refused: *"Apple could not verify…"*, with only Done and Move to Bin |
-| Developer ID signed, not notarised | Still refused. A signature on its own has not been enough since macOS 10.15 |
-| Developer ID signed **and notarised** | *"…is an app downloaded from the Internet. Are you sure you want to open it?"* → **Open** |
+| | First launch of a downloaded copy | Permission after an update |
+|---|---|---|
+| Ad-hoc signed | Refused: *"Apple could not verify…"*, with only Done and Move to Bin | Lost, every time |
+| Self-signed — **what is published today** | Refused the same way. A signature on its own has not been enough since macOS 10.15 | Survives |
+| Developer ID signed **and notarised** | *"…is an app downloaded from the Internet. Are you sure you want to open it?"* → **Open** | Survives |
 
 The build and the release workflow already do the whole of it — signing,
 notarising, stapling, and importing the certificate on a clean CI runner —
@@ -199,9 +227,12 @@ In particular:
 - **No microphone.** MechKeys plays audio; it does not record any.
 - **No Screen Recording, Camera, or Full Disk Access.** It reads its own
   bundle and writes one `UserDefaults` key.
-- **No network access of any kind.** No analytics, no crash reporting, no
-  update check, no account. The app makes no requests at all, so there is
-  nowhere for anything to go even in principle.
+- **One network request, and you can turn it off.** MechKeys asks GitHub for
+  its own latest release tag, and downloads a new version only when you press
+  Download & Restart. It sends nothing — no identifiers, no version report, no
+  analytics, no crash reporting, no account. Switch off *Check for updates
+  automatically* in Configure → General and it makes no requests at all unless
+  you ask it to.
 - **The App Sandbox is deliberately off**, because a sandboxed process is not
   permitted to create a `CGEventTap` at all. The hardened runtime is on.
 
@@ -218,7 +249,7 @@ opens the rest.
 | **Sound** | Switch profile, dampening and its six advanced DSP parameters, master volume |
 | **Keys** | Modifier sounds, and per-category enable / level / pitch for all six key categories |
 | **Behaviour** | Key-repeat handling, minimum interval, variation amount, overlapping voices |
-| **General** | Permission status, launch at login, privacy summary, reset, quit |
+| **General** | Permission status, launch at login, version and updates, privacy summary, reset, quit |
 
 Everything applies immediately. **Save & Close** confirms and dismisses the
 window — MechKeys keeps running in the menu bar. **Revert Changes** undoes
@@ -304,13 +335,17 @@ tccutil reset Accessibility com.mechkeys.app
 ```
 
 `MechKeys --diagnose` prints the app's own view of its signature and whether it
-can actually create an event tap.
+can actually create an event tap. Run from a terminal it reports on *the
+terminal's* Accessibility rather than the app's — macOS grants that permission
+to the responsible process — so it says so and softens its verdict. The
+trustworthy check is Keyboard Access in the popover.
 
 ### The sounds
 
 All 120 bundled recordings are of real keyboards, by Thomas Lai (`tplai`),
 published as part of kbsim under the MIT licence. They ship inside the app
-bundle — there is no download step and no network call at runtime. The MIT
+bundle — there is no sound pack to download and nothing is ever fetched to make
+a sound. The MIT
 notice travels with them in the bundle, which is what the licence requires;
 see [assets/LICENSES.md](assets/LICENSES.md) for the full provenance.
 

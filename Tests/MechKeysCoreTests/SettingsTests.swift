@@ -21,7 +21,7 @@ struct SettingsTests {
         #expect(settings.profile == .brown)
         #expect(settings.dampening == 0.35)
         #expect(settings.volume == 0.50)
-        #expect(settings.playModifierSounds == false)
+        #expect(settings.playModifierSounds == true)
         #expect(settings.hasCompletedOnboarding == false)
         #expect(settings.keyRepeatMode == .silent)
         #expect(settings.usesAdvancedDampening == false)
