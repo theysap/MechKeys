@@ -1,0 +1,85 @@
+name: Install script
+
+# The one-line installer documented in README.md is served from theysap.com,
+# which keeps its **own copy** of Scripts/install.sh. Nothing makes the two
+# stay identical, and a copy that has quietly drifted is a pipe-to-bash script
+# doing something other than what this repository says it does — which is the
+# one kind of drift that is not allowed to go unnoticed.
+#
+# So it is checked from both directions: on a push that touches the script,
+# because this side can change; and daily, because the served side can change
+# with no commit here at all.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'Scripts/install.sh'
+      - '.github/workflows/install-script.yml'
+  pull_request:
+    paths:
+      - 'Scripts/install.sh'
+      - '.github/workflows/install-script.yml'
+  schedule:
+    # Daily. Offset from the hour, where every other cron job in the world is.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  compare:
+    name: Served copy matches the original
+    runs-on: ubuntu-latest
+
+    env:
+      URL: https://theysap.com/install/mechkeys
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare the served copy against Scripts/install.sh
+        run: |
+          status="$(curl -sS -o served.sh -w '%{http_code}' --max-time 30 "${URL}" || echo 000)"
+
+          # Unreachable is not drift. A transient network failure, or a URL
+          # that has not been set up yet, must not redden a build that has
+          # nothing to do with either — but it should be impossible to miss.
+          if [ "${status}" != "200" ]; then
+            echo "::warning title=Install script not checked::${URL} returned ${status}. The one-line install in README.md does not work until that URL serves Scripts/install.sh as text/plain."
+            {
+              echo "### Install script not checked"
+              echo
+              echo "\`${URL}\` returned **${status}**."
+              echo
+              echo "Until it serves \`Scripts/install.sh\`, the one-line install in the README does not work,"
+              echo "and every new user gets the Gatekeeper wall that a \`curl\` install avoids."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          # The README's promise is that you can read it before piping it into
+          # a shell. Served as HTML, the pipe still works but reading it does
+          # not — worth saying, not worth failing over.
+          type="$(curl -sSI --max-time 30 "${URL}" | tr -d '\r' \
+            | awk -F': ' 'tolower($1) == "content-type" { print $2 }')"
+          case "${type}" in
+            text/plain*) ;;
+            *) echo "::warning title=Install script content type::${URL} is served as '${type}', not text/plain." ;;
+          esac
+
+          if diff -u Scripts/install.sh served.sh > drift.diff; then
+            echo "The served copy is byte-identical to Scripts/install.sh."
+            exit 0
+          fi
+
+          echo "::error title=Install script has drifted::${URL} no longer matches Scripts/install.sh."
+          {
+            echo "### Install script has drifted"
+            echo
+            echo "\`${URL}\` differs from \`Scripts/install.sh\`."
+            echo "People pipe the **served** copy into a shell, so that is the one that matters."
+            echo
+            echo '```diff'
+            cat drift.diff
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 1

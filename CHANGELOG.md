@@ -3,6 +3,29 @@
 All notable changes to MechKeys are recorded here. Versions are the commit
 subjects, in `vX.Y.Z` form.
 
+## v1.0.1
+
+### Added
+
+- **A check that theysap.com is still serving this repository's install
+  script.** The one-line installer in the README points at
+  `theysap.com/install/mechkeys`, which serves its own copy of
+  `Scripts/install.sh` rather than redirecting here. Nothing made the two
+  stay identical, and a drifted copy is a pipe-to-bash script doing something
+  other than what this repository says it does — the one kind of drift that
+  must not go unnoticed. The new workflow fetches the served copy and diffs
+  it, on any push touching the script and again daily, since the served side
+  can change with no commit here at all. A mismatch fails and prints the
+  diff; being unreachable only warns, because a transient network failure
+  should not redden an unrelated build. It also warns if the copy stops being
+  served as `text/plain`, since the README's promise is that you can read it
+  before piping it into a shell.
+
+  As of this commit that URL returns **404**, so the check warns rather than
+  fails. Until it is published, every new user gets the Gatekeeper wall that
+  a `curl` install avoids entirely — macOS quarantines what a browser
+  downloads, not what `curl` fetches.
+
 ## v1.0.0
 
 The first stable release. `v0.10.0` has the substance of what changed; this
