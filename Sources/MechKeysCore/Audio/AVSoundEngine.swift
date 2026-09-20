@@ -435,7 +435,15 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
         }
     }
 
-    private func performPlay(category: KeyCategory) {
+    /// - Parameter options: `.interrupts` for live playback, so a stolen
+    ///   voice restarts immediately instead of queueing. The offline render
+    ///   passes none: it schedules onto a player that has never started, and
+    ///   an interrupt racing a not-yet-processed `play()` can drop the buffer
+    ///   outright. See `renderOneShot`.
+    private func performPlay(
+        category: KeyCategory,
+        options: AVAudioPlayerNodeBufferOptions = .interrupts
+    ) {
         guard running, engine.isRunning else { return }
         guard let buffers = preparedBuffers[category] ?? preparedBuffers[.standard],
             !buffers.isEmpty
@@ -454,9 +462,10 @@ public final class AVSoundEngine: SoundEngine, @unchecked Sendable {
         player.volume = min(
             trim * variation.nextAmplitudeScalar(amount: settings.variationAmount), 4.0)
 
-        // `.interrupts` matters when a voice is stolen under very fast typing:
-        // the new sound starts now instead of queueing behind the old one.
-        player.scheduleBuffer(buffer, at: nil, options: .interrupts, completionHandler: nil)
+        // Scheduled before the player is started, never after: an
+        // `AVAudioPlayerNode` processes `play()` asynchronously, and a buffer
+        // handed to a node that is mid-transition can be dropped.
+        player.scheduleBuffer(buffer, at: nil, options: options, completionHandler: nil)
         if !player.isPlaying { player.play() }
     }
 
@@ -517,10 +526,17 @@ extension AVSoundEngine {
                 .offline, format: processingFormat, maximumFrameCount: maximumFrames)
             engine.prepare()
             try engine.start()
-            players.forEach { $0.play() }
             running = true
             applyLiveParameters()
-            performPlay(category: category)
+            // Deliberately *not* `players.forEach { $0.play() }` first. Doing
+            // that starts every voice with an empty queue and then schedules
+            // into one with `.interrupts`, which is a race: the interrupt can
+            // reach the node before its own `play()` has been processed, and
+            // the buffer is dropped. The whole render then comes out silent,
+            // intermittently and only on a machine slow enough to lose the
+            // race — which is why this passed here for months and failed on
+            // CI. `performPlay` schedules first and starts that one voice.
+            performPlay(category: category, options: [])
         }
 
         guard
@@ -554,7 +570,15 @@ extension AVSoundEngine {
         // artefact of driving the engine by hand and says nothing about the
         // audio, so callers never see it.
         guard let onset = rendered.firstIndex(where: { $0 != 0 }) else {
-            throw SoundEngineError.outputUnavailable("The graph rendered only silence.")
+            // Say what was actually wrong. "Only silence" on its own sent one
+            // CI failure round several wrong explanations.
+            let cached = queue.sync {
+                preparedBuffers[category]?.map { Int($0.frameLength) } ?? []
+            }
+            throw SoundEngineError.outputUnavailable(
+                """
+                The graph rendered only silence.                 frames rendered: \(rendered.count) of \(budget);                 cached buffers for \(category.rawValue): \(cached).
+                """)
         }
         let end = min(onset + wanted, rendered.count)
         return Array(rendered[onset..<end])

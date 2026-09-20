@@ -23,10 +23,14 @@ struct UpdatePanelView: View {
     let mode: Mode
     var onDismiss: () -> Void
 
+    @StateObject private var hovering = ViewState(false)
+
     private var currentVersion: String { AppInfo.versionDescription }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            trafficLights
+
             HStack(alignment: .top, spacing: 11) {
                 icon
                 VStack(alignment: .leading, spacing: 3) {
@@ -50,11 +54,55 @@ struct UpdatePanelView: View {
 
             buttons
         }
-        .padding(16)
+        .padding(14)
         .frame(width: 320, alignment: .leading)
         .glassCard(cornerRadius: 16)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Software update")
+    }
+
+    // MARK: - Traffic lights
+
+    /// Drawn rather than taken from the window.
+    ///
+    /// The panel has no title bar to put AppKit's own buttons in — the glass
+    /// card defines its shape, and a real title bar would draw a grey strip
+    /// across the top of it. So the three are drawn as content.
+    ///
+    /// Only the red one does anything: there is nothing to minimise a
+    /// 320-point notice into and nothing to zoom it to. The other two are
+    /// drawn in the grey macOS itself uses for a disabled window button,
+    /// rather than in full colour, because a button that looks live and does
+    /// nothing is worse than one that plainly looks off.
+    private var trafficLights: some View {
+        HStack(spacing: 8) {
+            Button(action: onDismiss) {
+                ZStack {
+                    Circle().fill(Color(red: 1.0, green: 0.37, blue: 0.34))
+                    // macOS only shows the glyph while the pointer is over
+                    // the cluster, and only on the buttons that work.
+                    if hovering.value {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(.black.opacity(0.55))
+                    }
+                }
+                .frame(width: 12, height: 12)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close")
+            .accessibilityHint("Dismisses this notice.")
+
+            ForEach([0, 1], id: \.self) { _ in
+                Circle()
+                    .fill(Color.secondary.opacity(0.28))
+                    .frame(width: 12, height: 12)
+            }
+            .accessibilityHidden(true)
+
+            Spacer(minLength: 0)
+        }
+        .onHover { hovering.value = $0 }
     }
 
     // MARK: - Content
@@ -203,6 +251,15 @@ struct UpdatePanelView: View {
 /// buttons inside it. A borderless `NSPanel` refuses to become key by default.
 private final class GlassPanel: NSPanel {
     override var canBecomeKey: Bool { true }
+
+    /// Escape closes the panel.
+    ///
+    /// AppKit routes Escape to `performClose:`, which looks for a real close
+    /// button and beeps when it cannot find one. This panel's close button is
+    /// drawn inside the glass, so the window has to answer for itself.
+    override func cancelOperation(_ sender: Any?) {
+        close()
+    }
 }
 
 /// Owns the update panel's window.
@@ -214,8 +271,13 @@ final class UpdatePanelController: NSObject, NSWindowDelegate {
 
     private var panel: NSPanel?
     private var hosting: NSHostingController<UpdatePanelView>?
+    /// Held so that closing by the window's own button resets the checker the
+    /// same way the panel's Later / OK / Close buttons do. Weak because the
+    /// controller owns it, not this.
+    private weak var checker: UpdateChecker?
 
     func show(checker: UpdateChecker, mode: UpdatePanelView.Mode) {
+        self.checker = checker
         let view = UpdatePanelView(checker: checker, mode: mode) { [weak self] in
             checker.dismiss()
             self?.close()
@@ -243,6 +305,8 @@ final class UpdatePanelController: NSObject, NSWindowDelegate {
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.isMovableByWindowBackground = true
+        // None of AppKit's own buttons: the panel draws its own, inside the
+        // glass, because there is no title bar for these to sit in.
         panel.standardWindowButton(.closeButton)?.isHidden = true
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true
@@ -276,6 +340,10 @@ final class UpdatePanelController: NSObject, NSWindowDelegate {
     var isVisible: Bool { panel?.isVisible ?? false }
 
     func windowWillClose(_ notification: Notification) {
+        // Covers the close button and Escape, neither of which goes through
+        // the SwiftUI buttons. `dismiss` leaves work in flight alone, so
+        // closing a download does not cancel it.
+        checker?.dismiss()
         panel = nil
         hosting = nil
     }

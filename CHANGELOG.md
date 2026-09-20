@@ -3,6 +3,69 @@
 All notable changes to MechKeys are recorded here. Versions are the commit
 subjects, in `vX.Y.Z` form.
 
+## v1.0.0
+
+The first stable release. `v0.10.0` has the substance of what changed; this
+marks it as finished and settles the two things that were still unverified.
+
+### Added
+
+- **Traffic lights on the update panel**, drawn inside the glass rather than
+  taken from the window: the panel has no title bar for AppKit's own buttons
+  to sit in, because the glass card is what defines its shape. All three are
+  there, but only the red one does anything — there is nothing to minimise a
+  320-point notice into and nothing to zoom it to — so the other two are
+  drawn in the grey macOS itself uses for a disabled window button rather
+  than in full colour. It also means *Downloading* and *Installing*, the two
+  states that offered no button at all, now have a way out. Escape closes the
+  panel too, which had to be wired up by hand: AppKit routes Escape to
+  `performClose:`, which looks for a real close button and beeps when it
+  cannot find one.
+
+### Fixed
+
+- **A race in the offline render that made CI fail at random**, and had done
+  since `v0.7.0` — two of the last three tagged builds died on it. The
+  measurement harness started every voice with an empty queue and *then*
+  scheduled a buffer into one with `.interrupts`. An `AVAudioPlayerNode`
+  processes `play()` asynchronously, so on a machine slow enough to lose the
+  race the interrupt reached the node before its own start had been handled
+  and the buffer was dropped, rendering silence. It passed on a developer
+  machine every time and failed on a CI runner about half the time, in
+  whichever tests happened to lose. The buffer is now scheduled first and
+  that one voice started after, which is the documented order. The error
+  raised when a render comes out silent also says how many frames it got and
+  what was in the buffer cache, because "the graph rendered only silence" on
+  its own sent one investigation down three wrong paths.
+
+### Changed
+
+- **The disk image window is a plain grainy off-white field.** The graphite
+  keyboard row that hung from its top edge is gone: it competed with the app
+  icon sitting right below it, and the app icon is the only mark the window
+  needs. The grain is generated per *point* and written across each
+  `scale × scale` block of pixels, so the 1x and 2x representations carry
+  texture of the same physical size rather than the Retina one looking twice
+  as fine. The generator is seeded with a fixed value, so re-rendering
+  committed artwork produces a byte-identical file instead of a spurious
+  diff.
+
+### Verified
+
+Neither of these was provable when the code was written, and both are load
+bearing, so they were settled before tagging:
+
+- **An update keeps the Accessibility grant.** Building twice and replacing
+  `/Applications/MechKeys.app` in place produced a byte-identical designated
+  requirement — `identifier "com.mechkeys.app" and certificate root = H"…"` —
+  and cost no permission. This is the whole reason releases are signed with a
+  stable identity rather than ad-hoc.
+- **The updater installs.** `UpdateInstaller.install` was run for real against
+  a local release: downloaded, checksum-verified, mounted, copied out,
+  quarantine stripped, the running bundle replaced with `replaceItemAt`, the
+  image unmounted and the new copy relaunched. The bundle went from 1.0.0 to
+  2.0.0 with nothing left mounted behind it.
+
 ## v0.10.0
 
 An in-app updater, the release signing it turns into a correctness
